@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>100 Комнат — Roguelike</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#07090f;color:#e8ecff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:12px}
+#game{width:min(1120px,98vw);background:linear-gradient(160deg,#121624,#0b0e16);border:1px solid #2a3145;border-radius:20px;box-shadow:0 30px 90px #000a;overflow:hidden}
+header{padding:16px 22px;border-bottom:1px solid #2a3145;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{font-size:22px;letter-spacing:.5px}
+.sub{color:#8b95b0;font-size:12px;margin-top:2px}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{background:#171c2b;padding:7px 11px;border-radius:10px;font-size:13px;border:1px solid #2a3145}
+main{display:grid;grid-template-columns:1fr 300px;min-height:620px}
+#scene{padding:22px 24px;position:relative}
+.roomtop{display:flex;justify-content:space-between;color:#8f99b2;font-size:13px;margin-bottom:10px}
+.room{min-height:480px;border-radius:18px;background:radial-gradient(ellipse at 50% 20%,#1e263a 0%,#121724 50%,#0c1018 100%);border:1px solid #2c354d;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px;text-align:center;position:relative;overflow:hidden}
+.room::before{content:"";position:absolute;inset:0;background:linear-gradient(transparent 97%,#ffffff05 97%);background-size:100% 16px;pointer-events:none}
+.icon{font-size:72px;filter:drop-shadow(0 12px 24px #0009);z-index:1;line-height:1;margin-bottom:6px}
+h2{font-size:28px;margin:6px 0 8px;z-index:1}
+.desc{max-width:540px;color:#a8b2c9;line-height:1.55;z-index:1;font-size:15px;margin-bottom:8px}
+.hint{color:#7a849c;font-size:12px;margin-bottom:14px;z-index:1}
+.buttons{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;z-index:2;max-width:560px}
+button{border:0;border-radius:11px;padding:11px 16px;background:#1e2638;color:#fff;font-weight:600;cursor:pointer;transition:.15s;font-size:13.5px;border:1px solid #323c55}
+button:hover{transform:translateY(-2px);background:#2a3450;border-color:#4a5575}
+button.primary{background:#5b4cf5;border-color:#7b6cff}
+button.primary:hover{background:#6d5dfc}
+button.danger{background:#a8324a;border-color:#c44}
+button.danger:hover{background:#c23d58}
+button.good{background:#1f8a58;border-color:#2db87a}
+button.good:hover{background:#27a368}
+button.gold{background:#8a6a1a;border-color:#c9a227}
+button:disabled{opacity:.35;cursor:not-allowed;transform:none}
+#side{border-left:1px solid #2a3145;padding:16px;background:#0c0f17;display:flex;flex-direction:column;gap:10px}
+.panel{background:#131825;border:1px solid #252d40;border-radius:13px;padding:13px}
+.panel h3{margin:0 0 10px;font-size:12px;color:#9aa5c0;letter-spacing:.6px;text-transform:uppercase}
+.bar{height:8px;background:#1e2433;border-radius:99px;overflow:hidden;margin-top:4px}
+.fill{height:100%;transition:.35s}
+.hp{background:linear-gradient(90deg,#e94560,#ff6b81)}
+.xp{background:linear-gradient(90deg,#6c5ce7,#a29bfe)}
+.row{display:flex;justify-content:space-between;gap:8px;margin:5px 0;font-size:13px;color:#aeb6c9}
+.row b{color:#e8ecff}
+.log{height:150px;overflow:auto;font-size:11.5px;line-height:1.45;color:#8f9bb3}
+.log div{margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid #1a2030}
+.item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1e2433;font-size:13px}
+.item:last-child{border:0}
+.badge{font-size:10px;padding:3px 6px;background:#1e2638;border-radius:6px;color:#c5cee3;border:1px solid #2f3850}
+.relic{font-size:12px;color:#c9b36a;margin-top:4px}
+#overlay{position:fixed;inset:0;background:#05060ae6;display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{width:min(480px,94vw);background:#131827;border:1px solid #353e58;border-radius:18px;padding:26px;text-align:center;box-shadow:0 30px 100px #000}
+.modal .big{font-size:64px;line-height:1}
+.modal h2{margin:8px 0 10px;font-size:24px}
+.modal p{color:#a8b2c9;line-height:1.5;margin-bottom:16px}
+.choice{display:grid;gap:8px}
+.choice button{width:100%;text-align:left;padding:12px 14px}
+.status{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:8px 0;z-index:1}
+.tag{font-size:11px;padding:3px 8px;border-radius:99px;background:#1e2638;border:1px solid #353e58;color:#c5cee3}
+.tag.poison{border-color:#4a8a4a;color:#7dca7d}
+.tag.burn{border-color:#c45;color:#f88}
+.tag.shield{border-color:#4a7fc4;color:#8ab4f0}
+.tag.bless{border-color:#c9a227;color:#f0d878}
+.tag.curse{border-color:#8a4ac4;color:#c9a0f0}
+@media(max-width:860px){
+  main{grid-template-columns:1fr}
+  #side{border-left:0;border-top:1px solid #2a3145}
+  .room{min-height:400px}
+  header{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+<div id="game">
+<header>
+  <div>
+    <h1>🏰 100 КОМНАТ</h1>
+    <div class="sub">Пройди подземелье. Делай выборы. Не умри.</div>
+  </div>
+  <div class="stats">
+    <div class="stat">Комната <b id="roomNum">1</b>/100</div>
+    <div class="stat">💰 <b id="gold">0</b></div>
+    <div class="stat">⚔️ <b id="atk">8</b></div>
+    <div class="stat">🛡️ <b id="def">0</b></div>
+  </div>
+</header>
+<main>
+<section id="scene">
+  <div class="roomtop">
+    <span id="roomType">Неизвестно</span>
+    <span id="seed"></span>
+  </div>
+  <div class="room">
+    <div class="icon" id="icon">🚪</div>
+    <h2 id="title">Вход</h2>
+    <div class="desc" id="desc">Ты стоишь перед первой дверью...</div>
+    <div class="status" id="statusTags"></div>
+    <div class="hint" id="hint"></div>
+    <div class="buttons" id="buttons"></div>
+  </div>
+</section>
+<aside id="side">
+  <div class="panel">
+    <h3>Персонаж</h3>
+    <div class="row"><span>❤️ Здоровье</span><b id="hpText">100/100</b></div>
+    <div class="bar"><div id="hpBar" class="fill hp" style="width:100%"></div></div>
+    <div class="row"><span>✨ Опыт</span><b id="xpText">0/100</b></div>
+    <div class="bar"><div id="xpBar" class="fill xp" style="width:0%"></div></div>
+    <div class="row"><span>⭐ Уровень</span><b id="level">1</b></div>
+  </div>
+  <div class="panel">
+    <h3>Снаряжение</h3>
+    <div id="items"></div>
+  </div>
+  <div class="panel">
+    <h3>Реликвии</h3>
+    <div id="relics" class="relic">Пока нет</div>
+  </div>
+  <div class="panel" style="flex:1">
+    <h3>Журнал</h3>
+    <div class="log" id="log"></div>
+  </div>
+  <button style="width:100%" onclick="saveGame()">💾 Сохранить</button>
+  <button style="width:100%" onclick="restart()">🔄 Новая игра</button>
+</aside>
+</main>
+</div>
+
+<div id="overlay">
+  <div class="modal">
+    <div class="big" id="modalIcon">☠️</div>
+    <h2 id="modalTitle">Конец</h2>
+    <p id="modalText"></p>
+    <div class="choice" id="modalButtons"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ========== STATE ==========
+let G = null; // game state
+let combat = null; // current combat state (null if not in fight)
+
+function fresh() {
+  G = {
+    room: 1,
+    hp: 100, maxHp: 100,
+    atk: 8, def: 0,
+    gold: 25,
+    xp: 0, level: 1,
+    potions: 2,
+    weapon: "Ржавый меч",
+    armor: "Тряпьё",
+    relics: [],
+    statuses: {}, // poison, burn, shield, bless, curse stacks/turns
+    rooms: [],
+    log: [],
+    seed: Math.floor(Math.random() * 999999),
+    flags: { visitedShop: 0, killedElites: 0, choicesMade: 0 }
+  };
+  // Seeded-ish generation using seed
+  let s = G.seed;
+  const rndSeed = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+  G.rooms = Array.from({ length: 100 }, (_, i) => makeRoom(i + 1, rndSeed));
+  log("🚪 Ты вошёл в подземелье. Впереди 100 комнат. Каждая дверь — выбор.");
+  render();
+}
+
+function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function chance(p) { return Math.random() < p; }
+
+// ========== ROOM GENERATION ==========
+function makeRoom(n, rndFn = Math.random) {
+  if (n === 100) return { type: "finalBoss" };
+  if (n % 10 === 0) return { type: "boss", tier: n / 10 };
+  if (n % 15 === 0) return { type: "shop" };
+  if (n % 25 === 0) return { type: "elite" };
+
+  const r = rndFn();
+  if (r < 0.32) return { type: "enemy" };
+  if (r < 0.48) return { type: "treasure" };
+  if (r < 0.60) return { type: "trap" };
+  if (r < 0.78) return { type: "event" };
+  if (r < 0.88) return { type: "rest" };
+  if (r < 0.94) return { type: "mystery" };
+  return { type: "enemy" };
+}
+
+// ========== LOGGING & RENDER ==========
+function log(msg) {
+  G.log.unshift(msg);
+  G.log = G.log.slice(0, 50);
+  $("log").innerHTML = G.log.map(v => `<div>${v}</div>`).join("");
+}
+
+function render() {
+  $("roomNum").textContent = G.room;
+  $("gold").textContent = G.gold;
+  $("atk").textContent = G.atk;
+  $("def").textContent = G.def;
+  $("hpText").textContent = `${Math.max(0, G.hp)}/${G.maxHp}`;
+  $("hpBar").style.width = Math.max(0, (G.hp / G.maxHp) * 100) + "%";
+  const need = 80 + G.level * 35;
+  $("xpText").textContent = `${G.xp}/${need}`;
+  $("xpBar").style.width = Math.min(100, (G.xp / need) * 100) + "%";
+  $("level").textContent = G.level;
+  $("seed").textContent = "#" + G.seed;
+
+  $("items").innerHTML = `
+    <div class="item">🗡️ ${G.weapon} <span class="badge">+${G.atk - 8} ATK</span></div>
+    <div class="item">🛡️ ${G.armor} <span class="badge">+${G.def} DEF</span></div>
+    <div class="item">🧪 Зелья <span class="badge">${G.potions}</span></div>
+  `;
+
+  if (G.relics.length === 0) {
+    $("relics").innerHTML = '<span style="color:#6a738a">Пока нет</span>';
+  } else {
+    $("relics").innerHTML = G.relics.map(r => `<div style="margin:3px 0">✨ ${r.name} <span style="color:#8b95b0;font-size:11px">— ${r.desc}</span></div>`).join("");
+  }
+
+  renderStatuses();
+
+  if (combat) {
+    showCombatUI();
+  } else {
+    const room = G.rooms[G.room - 1];
+    showRoom(room);
+  }
+}
+
+function renderStatuses() {
+  const tags = [];
+  if (G.statuses.poison > 0) tags.push(`<span class="tag poison">☠️ Яд ${G.statuses.poison}</span>`);
+  if (G.statuses.burn > 0) tags.push(`<span class="tag burn">🔥 Ожог ${G.statuses.burn}</span>`);
+  if (G.statuses.shield > 0) tags.push(`<span class="tag shield">🛡️ Щит ${G.statuses.shield}</span>`);
+  if (G.statuses.bless > 0) tags.push(`<span class="tag bless">✨ Благословение ${G.statuses.bless}</span>`);
+  if (G.statuses.curse > 0) tags.push(`<span class="tag curse">🌑 Проклятие ${G.statuses.curse}</span>`);
+  $("statusTags").innerHTML = tags.join("");
+}
+
+function setButtons(btns) {
+  $("buttons").innerHTML = btns.map(b => {
+    const cls = b.cls || "";
+    const dis = b.disabled ? "disabled" : "";
+    return `<button class="${cls}" ${dis} onclick="window._acts[${b.id}]()">${b.text}</button>`;
+  }).join("");
+  window._acts = btns.map(b => b.fn);
+}
+
+// ========== ROOM DISPLAY ==========
+function showRoom(r) {
+  combat = null;
+  const data = {
+    enemy:     ["👹", "Враг", "В темноте что-то шевелится. Можно сразиться или попытаться проскользнуть мимо."],
+    elite:     ["💀", "Элитный враг", "Сильный противник. Победа даст отличную награду, но риск высок."],
+    treasure:  ["🎁", "Сундук", "Старый сундук. Можно открыть осторожно или силой."],
+    trap:      ["☠️", "Ловушка", "Пол подозрительно скрипит. Здесь явно что-то не так."],
+    event:     ["❓", "Странная встреча", "Ты чувствуешь, что здесь произойдёт что-то необычное."],
+    rest:      ["🔥", "Тихая комната", "Здесь можно перевести дух. Костёр ещё тлеет."],
+    shop:      ["🏪", "Торговец", "Странный тип в капюшоне предлагает товар. Цены кусаются."],
+    mystery:   ["🌀", "Тайна", "Комната искажена. Реальность здесь ведёт себя странно."],
+    boss:      ["👑", "БОСС", "Дверь захлопнулась. Хранитель этажа смотрит на тебя."],
+    finalBoss: ["🐉", "ФИНАЛЬНЫЙ БОСС", "Последняя комната. Древний страж пробуждается."]
+  }[r.type] || ["❓", "Комната", "..."];
+
+  $("roomType").textContent = (r.type === "boss" || r.type === "finalBoss" || r.type === "elite") ? "⚠️ ОПАСНО" : "КОМНАТА";
+  $("icon").textContent = data[0];
+  $("title").textContent = data[1];
+  $("desc").textContent = data[2];
+  $("hint").textContent = "";
+
+  // Build choices based on type
+  const choices = getChoices(r);
+  setButtons(choices);
+}
+
+function getChoices(r) {
+  const base = [];
+  // Always allow potion if available (outside combat)
+  const potionBtn = G.potions > 0 ? { id: base.length, text: "🧪 Выпить зелье", cls: "", fn: () => usePotion(false) } : null;
+
+  switch (r.type) {
+    case "enemy":
+      base.push({ id: 0, text: "⚔️ Сразиться", cls: "danger", fn: () => startFight(false, false) });
+      base.push({ id: 1, text: "🏃 Попытаться проскользнуть", cls: "", fn: () => trySneak() });
+      break;
+    case "elite":
+      base.push({ id: 0, text: "⚔️ Принять бой", cls: "danger", fn: () => startFight(false, true) });
+      base.push({ id: 1, text: "🏃 Бежать (потеряешь золото)", cls: "", fn: () => fleeElite() });
+      break;
+    case "treasure":
+      base.push({ id: 0, text: "🔓 Открыть осторожно", cls: "primary", fn: () => openTreasure(false) });
+      base.push({ id: 1, text: "💥 Взломать силой", cls: "danger", fn: () => openTreasure(true) });
+      break;
+    case "trap":
+      base.push({ id: 0, text: "🛠️ Попытаться обезвредить", cls: "primary", fn: () => handleTrap("disarm") });
+      base.push({ id: 1, text: "🦘 Перепрыгнуть", cls: "", fn: () => handleTrap("jump") });
+      base.push({ id: 2, text: "💰 Бросить монету (отвлечь)", cls: "gold", fn: () => handleTrap("coin") });
+      break;
+    case "event":
+      return getEventChoices(); // special
+    case "rest":
+      base.push({ id: 0, text: "😴 Отдохнуть (+HP)", cls: "good", fn: () => doRest("heal") });
+      base.push({ id: 1, text: "🔨 Точить оружие (+ATK)", cls: "primary", fn: () => doRest("atk") });
+      base.push({ id: 2, text: "🧘 Медитировать (+XP)", cls: "", fn: () => doRest("xp") });
+      break;
+    case "shop":
+      return getShopChoices();
+    case "mystery":
+      base.push({ id: 0, text: "🔮 Коснуться аномалии", cls: "primary", fn: () => mysteryTouch() });
+      base.push({ id: 1, text: "🚶 Обойти стороной", cls: "", fn: () => { log("Ты осторожно прошёл мимо."); nextRoom(); } });
+      break;
+    case "boss":
+    case "finalBoss":
+      base.push({ id: 0, text: "⚔️ Сразиться с боссом", cls: "danger", fn: () => startFight(true, false) });
+      break;
+    default:
+      base.push({ id: 0, text: "Продолжить", cls: "primary", fn: () => nextRoom() });
+  }
+
+  if (potionBtn && r.type !== "shop") {
+    potionBtn.id = base.length;
+    base.push(potionBtn);
+  }
+  return base;
+}
+
+// ========== EVENTS (interesting branching) ==========
+function getEventChoices() {
+  const events = [
+    {
+      title: "Раненый странник",
+      desc: "На полу лежит раненый человек. Он протягивает руку.",
+      choices: [
+        { text: "❤️ Помочь ему (потратить зелье)", fn: () => {
+          if (G.potions <= 0) { log("У тебя нет зелий. Странник разочарован и уходит."); nextRoom(); return; }
+          G.potions--;
+          G.gold += rnd(20, 40);
+          gainXP(25);
+          log("Ты отдал зелье. Странник поблагодарил и дал тебе золото и знания.");
+          nextRoom();
+        }},
+        { text: "🗡️ Обыскать его", fn: () => {
+          if (chance(0.6)) {
+            G.gold += rnd(15, 35);
+            log("Ты нашёл немного золота. Совесть немного грызёт.");
+          } else {
+            takeDamage(rnd(12, 22));
+            log("Это была ловушка! Он оказался приманкой. Ты получил урон.");
+            if (G.hp <= 0) return lose();
+          }
+          nextRoom();
+        }},
+        { text: "🚶 Пройти мимо", fn: () => { log("Ты оставил его. Иногда так безопаснее."); nextRoom(); } }
+      ]
+    },
+    {
+      title: "Кровавый алтарь",
+      desc: "Древний алтарь. Можно принести жертву.",
+      choices: [
+        { text: "🩸 Пожертвовать 20 HP", fn: () => {
+          takeDamage(20);
+          if (G.hp <= 0) return lose();
+          G.atk += 3;
+          G.weapon = pick(["Клинок жертвы", "Кровавый топор", "Шипастый меч"]);
+          log("Алтарь принял жертву. Твоя атака выросла!");
+          nextRoom();
+        }},
+        { text: "💰 Положить 30 золота", fn: () => {
+          if (G.gold < 30) { log("Не хватает золота."); return; }
+          G.gold -= 30;
+          G.potions += 2;
+          log("Алтарь дал тебе два зелья.");
+          nextRoom();
+        }},
+        { text: "🙅 Уйти", fn: () => { log("Ты не стал рисковать."); nextRoom(); } }
+      ]
+    },
+    {
+      title: "Зеркало душ",
+      desc: "В зеркале ты видишь другую версию себя.",
+      choices: [
+        { text: "🪞 Коснуться отражения", fn: () => {
+          if (chance(0.5)) {
+            G.maxHp += 15;
+            G.hp = Math.min(G.maxHp, G.hp + 20);
+            log("Отражение укрепило тебя. +15 макс. HP!");
+          } else {
+            G.statuses.curse = (G.statuses.curse || 0) + 3;
+            log("Отражение прокляло тебя.");
+          }
+          nextRoom();
+        }},
+        { text: "💥 Разбить зеркало", fn: () => {
+          G.gold += rnd(25, 50);
+          takeDamage(rnd(8, 18));
+          log("Осколки поранили, но внутри было золото.");
+          if (G.hp <= 0) return lose();
+          nextRoom();
+        }}
+      ]
+    },
+    {
+      title: "Говорящий череп",
+      desc: "Череп шепчет: «Загадай желание... за цену».",
+      choices: [
+        { text: "⚔️ Сила (+5 ATK, -15 maxHP)", fn: () => {
+          G.atk += 5;
+          G.maxHp = Math.max(40, G.maxHp - 15);
+          G.hp = Math.min(G.hp, G.maxHp);
+          log("Ты стал сильнее, но хрупче.");
+          nextRoom();
+        }},
+        { text: "❤️ Жизнь (+25 maxHP, -2 ATK)", fn: () => {
+          G.maxHp += 25;
+          G.hp += 25;
+          G.atk = Math.max(4, G.atk - 2);
+          log("Ты стал живучее, но слабее в ударе.");
+          nextRoom();
+        }},
+        { text: "🎲 Случайность", fn: () => {
+          const roll = rnd(1, 4);
+          if (roll === 1) { G.gold += 80; log("Череп насыпал золота!"); }
+          else if (roll === 2) { G.potions += 3; log("Три зелья из пустоты."); }
+          else if (roll === 3) { addRelic(pickRelic()); }
+          else { takeDamage(30); log("Череп рассмеялся и ударил тебя болью."); if (G.hp <= 0) return lose(); }
+          nextRoom();
+        }}
+      ]
+    },
+    {
+      title: "Запертая клетка",
+      desc: "В клетке сидит существо. Оно смотрит умоляюще.",
+      choices: [
+        { text: "🔓 Освободить", fn: () => {
+          if (chance(0.55)) {
+            addRelic(pickRelic());
+            log("Существо оказалось добрым духом и одарило тебя реликвией!");
+          } else {
+            startFight(false, true); // it was a monster
+            log("Это был монстр! Он нападает!");
+            return;
+          }
+          nextRoom();
+        }},
+        { text: "🗡️ Добить и забрать вещи", fn: () => {
+          G.gold += rnd(20, 45);
+          if (chance(0.3)) G.potions++;
+          log("Ты забрал пожитки. Быстро и жестоко.");
+          nextRoom();
+        }},
+        { text: "🚶 Оставить", fn: () => { log("Ты ушёл. Судьба клетки осталась тайной."); nextRoom(); } }
+      ]
+    }
+  ];
+
+  const ev = pick(events);
+  $("icon").textContent = "❓";
+  $("title").textContent = ev.title;
+  $("desc").textContent = ev.desc;
+  $("hint").textContent = "Выбор имеет последствия";
+
+  return ev.choices.map((c, i) => ({ id: i, text: c.text, cls: i === 0 ? "primary" : "", fn: () => { G.flags.choicesMade++; c.fn(); } }));
+}
+
+// ========== SHOP ==========
+function getShopChoices() {
+  const offers = [
+    { text: `🧪 Зелье — 25💰`, cost: 25, fn: () => { G.potions++; log("Куплено зелье."); } },
+    { text: `⚔️ Улучшить оружие (+3 ATK) — 40💰`, cost: 40, fn: () => { G.atk += 3; G.weapon = pick(["Стальной меч","Боевой топор","Рапира"]); log("Оружие улучшено!"); } },
+    { text: `🛡️ Улучшить броню (+2 DEF) — 35💰`, cost: 35, fn: () => { G.def += 2; G.armor = pick(["Кольчуга","Латный доспех","Укреплённая куртка"]); log("Броня улучшена!"); } },
+    { text: `❤️ +20 макс. HP — 45💰`, cost: 45, fn: () => { G.maxHp += 20; G.hp += 20; log("Ты стал крепче."); } },
+  ];
+  // Sometimes a relic
+  if (chance(0.4)) {
+    const rel = pickRelic();
+    offers.push({ text: `✨ ${rel.name} — 60💰`, cost: 60, fn: () => { addRelic(rel); } });
+  }
+
+  const btns = offers.map((o, i) => ({
+    id: i,
+    text: o.text,
+    cls: G.gold >= o.cost ? "gold" : "",
+    disabled: G.gold < o.cost,
+    fn: () => {
+      if (G.gold < o.cost) return;
+      G.gold -= o.cost;
+      o.fn();
+      render(); // refresh shop prices/disabled
+    }
+  }));
+  btns.push({ id: btns.length, text: "🚪 Уйти из лавки", cls: "primary", fn: () => nextRoom() });
+  $("hint").textContent = "Можно купить несколько вещей";
+  return btns;
+}
+
+// ========== TREASURE ==========
+function openTreasure(risky) {
+  G.flags.choicesMade++;
+  if (risky) {
+    if (chance(0.35)) {
+      takeDamage(rnd(15, 28));
+      log("💥 Ловушка в сундуке! Ты получил урон.");
+      if (G.hp <= 0) return lose();
+    }
+    // better rewards
+    const roll = Math.random();
+    if (roll < 0.35) {
+      const g = rnd(40, 90);
+      G.gold += g;
+      log(`🎁 Много золота! +${g}💰`);
+    } else if (roll < 0.6) {
+      G.atk += rnd(3, 6);
+      G.weapon = pick(["Пылающий клинок","Топор берсерка","Кинжал тени","Молот грома"]);
+      log(`🗡️ Отличное оружие: ${G.weapon}!`);
+    } else if (roll < 0.8) {
+      G.def += rnd(2, 4);
+      G.armor = pick(["Латный доспех","Щит стража","Мантия мага"]);
+      log(`🛡️ Отличная броня: ${G.armor}!`);
+    } else {
+      addRelic(pickRelic());
+    }
+  } else {
+    // safe, weaker
+    const roll = Math.random();
+    if (roll < 0.5) {
+      const g = rnd(15, 40);
+      G.gold += g;
+      log(`🎁 Немного золота: +${g}💰`);
+    } else if (roll < 0.75) {
+      G.potions++;
+      log("🧪 Нашёл зелье.");
+    } else {
+      G.atk += rnd(1, 3);
+      log("🗡️ Оружие немного лучше.");
+    }
+  }
+  nextRoom();
+}
+
+// ========== TRAP ==========
+function handleTrap(style) {
+  G.flags.choicesMade++;
+  if (style === "disarm") {
+    if (chance(0.55 + (G.level * 0.02))) {
+      G.gold += rnd(20, 40);
+      log("🛠️ Ты успешно обезвредил ловушку и нашёл спрятанное золото!");
+    } else {
+      takeDamage(rnd(18, 32));
+      log("☠️ Не удалось! Ловушка сработала.");
+      if (G.hp <= 0) return lose();
+    }
+  } else if (style === "jump") {
+    if (chance(0.65)) {
+      log("🦘 Ты ловко перепрыгнул!");
+    } else {
+      takeDamage(rnd(12, 24));
+      log("☠️ Поскользнулся и получил урон.");
+      if (G.hp <= 0) return lose();
+    }
+  } else { // coin
+    if (G.gold < 10) {
+      log("Не хватает даже 10 монет.");
+      return;
+    }
+    G.gold -= 10;
+    log("💰 Монеты отвлекли механизм. Ты прошёл.");
+  }
+  nextRoom();
+}
+
+// ========== REST ==========
+function doRest(mode) {
+  G.flags.choicesMade++;
+  if (mode === "heal") {
+    const h = rnd(22, 38) + Math.floor(G.maxHp * 0.08);
+    G.hp = Math.min(G.maxHp, G.hp + h);
+    log(`🔥 Ты отдохнул и восстановил ${h} HP.`);
+    if (chance(0.25)) { G.potions++; log("🧪 В углях нашлось зелье."); }
+  } else if (mode === "atk") {
+    G.atk += 2;
+    log("🔨 Ты заточил оружие. +2 ATK.");
+  } else {
+    gainXP(40);
+    log("🧘 Медитация принесла опыт.");
+  }
+  // clear some statuses
+  if (G.statuses.poison) G.statuses.poison = Math.max(0, G.statuses.poison - 2);
+  if (G.statuses.burn) G.statuses.burn = Math.max(0, G.statuses.burn - 2);
+  nextRoom();
+}
+
+// ========== MYSTERY ==========
+function mysteryTouch() {
+  G.flags.choicesMade++;
+  const roll = rnd(1, 6);
+  if (roll === 1) {
+    G.hp = G.maxHp;
+    log("🌀 Аномалия полностью исцелила тебя!");
+  } else if (roll === 2) {
+    G.atk += 4;
+    log("🌀 Сила наполнила твоё оружие. +4 ATK!");
+  } else if (roll === 3) {
+    addRelic(pickRelic());
+  } else if (roll === 4) {
+    G.statuses.bless = 4;
+    log("🌀 Ты получил благословение на несколько комнат.");
+  } else if (roll === 5) {
+    takeDamage(rnd(20, 35));
+    log("🌀 Аномалия ударила обратной волной.");
+    if (G.hp <= 0) return lose();
+  } else {
+    G.room = Math.min(100, G.room + 2);
+    log("🌀 Пространство исказилось — ты проскочил две комнаты вперёд!");
+  }
+  nextRoom();
+}
+
+// ========== SNEAK / FLEE ==========
+function trySneak() {
+  G.flags.choicesMade++;
+  if (chance(0.45 + G.level * 0.015)) {
+    log("🏃 Ты тихо проскользнул мимо. Удача!");
+    nextRoom();
+  } else {
+    log("👹 Враг заметил тебя! Пришлось сражаться в невыгодной позиции.");
+    // disadvantage: enemy stronger
+    startFight(false, false, true);
+  }
+}
+
+function fleeElite() {
+  G.flags.choicesMade++;
+  const loss = Math.min(G.gold, rnd(15, 35));
+  G.gold -= loss;
+  log(`🏃 Ты сбежал, потеряв ${loss} золота.`);
+  nextRoom();
+}
+
+// ========== COMBAT ==========
+function startFight(isBoss, isElite, disadvantage = false) {
+  let enemy;
+  if (isBoss) {
+    const tier = G.rooms[G.room - 1].tier || 10;
+    enemy = {
+      name: G.room === 100 ? "Древний Страж" : pick(["Хранитель Пламени", "Повелитель Теней", "Железный Колосс", "Проклятый Король"]),
+      hp: 90 + tier * 25 + G.level * 6,
+      maxHp: 0,
+      atk: 12 + tier * 2 + Math.floor(G.level * 0.8),
+      isBoss: true,
+      isElite: false
+    };
+    enemy.maxHp = enemy.hp;
+  } else if (isElite) {
+    enemy = {
+      name: pick(["Элитный Рыцарь", "Проклятый Огр", "Теневой Убийца", "Алчный Демон"]),
+      hp: 55 + G.level * 7,
+      maxHp: 0,
+      atk: 11 + Math.floor(G.level * 0.7),
+      isBoss: false,
+      isElite: true
+    };
+    enemy.maxHp = enemy.hp;
+  } else {
+    enemy = {
+      name: pick(["Гоблин", "Скелет", "Крыса-мутант", "Разбойник", "Зомби", "Паук", "Культист"]),
+      hp: 24 + G.level * 5 + (disadvantage ? 10 : 0),
+      maxHp: 0,
+      atk: 6 + Math.floor(G.level / 2) + (disadvantage ? 3 : 0),
+      isBoss: false,
+      isElite: false
+    };
+    enemy.maxHp = enemy.hp;
+  }
+
+  combat = { enemy, turn: 0 };
+  showCombatUI();
+}
+
+function showCombatUI() {
+  const e = combat.enemy;
+  $("icon").textContent = e.isBoss ? "👑" : (e.isElite ? "💀" : "👹");
+  $("title").textContent = e.name;
+  $("desc").textContent = `HP врага: ${e.hp}/${e.maxHp} · Урон: ~${e.atk}`;
+  $("hint").textContent = "Выбери действие";
+  $("roomType").textContent = "⚔️ БОЙ";
+
+  const btns = [
+    { id: 0, text: "⚔️ Атаковать", cls: "danger", fn: () => playerAttack() },
+    { id: 1, text: "🛡️ Защищаться", cls: "", fn: () => playerDefend() },
+  ];
+  if (G.potions > 0) {
+    btns.push({ id: 2, text: "🧪 Зелье", cls: "good", fn: () => usePotion(true) });
+  }
+  // Special if has relic
+  if (G.relics.some(r => r.id === "berserk")) {
+    btns.push({ id: 3, text: "😡 Берсерк (x2 урон, получи урон)", cls: "danger", fn: () => playerBerserk() });
+  }
+  setButtons(btns);
+  renderStatuses();
+}
+
+function playerAttack() {
+  const e = combat.enemy;
+  let dmg = Math.max(1, G.atk + rnd(-2, 4));
+  if (G.statuses.bless > 0) dmg = Math.floor(dmg * 1.25);
+  if (G.statuses.curse > 0) dmg = Math.floor(dmg * 0.8);
+
+  e.hp -= dmg;
+  log(`⚔️ Ты нанёс ${dmg} урона.`);
+
+  if (e.hp <= 0) return winCombat();
+
+  enemyTurn();
+}
+
+function playerDefend() {
+  G.statuses.shield = (G.statuses.shield || 0) + 2;
+  log("🛡️ Ты встал в защиту. Получишь меньше урона.");
+  enemyTurn();
+}
+
+function playerBerserk() {
+  const e = combat.enemy;
+  let dmg = Math.max(1, (G.atk + rnd(-1, 3)) * 2);
+  e.hp -= dmg;
+  takeDamage(rnd(6, 14));
+  log(`😡 Берсерк! Ты нанёс ${dmg}, но сам пострадал.`);
+  if (G.hp <= 0) return lose();
+  if (e.hp <= 0) return winCombat();
+  enemyTurn();
+}
+
+function enemyTurn() {
+  const e = combat.enemy;
+  let taken = Math.max(1, e.atk + rnd(-2, 3) - G.def);
+
+  if (G.statuses.shield > 0) {
+    taken = Math.max(1, Math.floor(taken * 0.5));
+    G.statuses.shield--;
+  }
+  if (G.statuses.bless > 0) taken = Math.max(1, Math.floor(taken * 0.85));
+
+  G.hp -= taken;
+  log(`💢 ${e.name} ударил тебя на ${taken} урона.`);
+
+  // Status ticks
+  tickStatuses();
+
+  if (G.hp <= 0) {
+    G.hp = 0;
+    render();
+    return lose();
+  }
+
+  // Chance to apply status
+  if (e.isElite && chance(0.25)) {
+    G.statuses.poison = (G.statuses.poison || 0) + 2;
+    log("☠️ Тебя отравили!");
+  }
+  if (e.isBoss && chance(0.2)) {
+    G.statuses.burn = (G.statuses.burn || 0) + 2;
+    log("🔥 На тебе ожоги!");
+  }
+
+  render();
+  showCombatUI();
+}
+
+function winCombat() {
+  const e = combat.enemy;
+  let gold = e.isBoss ? rnd(60, 120) : e.isElite ? rnd(35, 70) : rnd(10, 28);
+  let xp = e.isBoss ? 120 : e.isElite ? 70 : 30;
+
+  // Relic bonuses
+  if (G.relics.some(r => r.id === "greed")) gold = Math.floor(gold * 1.4);
+
+  G.gold += gold;
+  gainXP(xp);
+  log(`☠️ ${e.name} повержен! +${gold}💰, +${xp} XP`);
+
+  if (e.isElite) G.flags.killedElites++;
+  if (e.isBoss) {
+    log("👑 Хранитель этажа повержен!");
+    if (chance(0.5)) addRelic(pickRelic());
+  }
+
+  combat = null;
+  // small heal after boss
+  if (e.isBoss) {
+    G.hp = Math.min(G.maxHp, G.hp + 20);
+    log("❤️ После тяжёлого боя ты немного восстановился.");
+  }
+  nextRoom();
+}
+
+// ========== POTION (fixed) ==========
+function usePotion(inCombat) {
+  if (G.potions <= 0) return;
+  G.potions--;
+  const heal = rnd(28, 45) + Math.floor(G.level * 2);
+  G.hp = Math.min(G.maxHp, G.hp + heal);
+  log(`🧪 Зелье восстановило ${heal} HP.`);
+  // clear mild statuses
+  if (G.statuses.poison) G.statuses.poison = Math.max(0, G.statuses.poison - 1);
+  if (G.statuses.burn) G.statuses.burn = Math.max(0, G.statuses.burn - 1);
+
+  if (inCombat) {
+    render();
+    showCombatUI();
+  } else {
+    render();
+  }
+}
+
+// ========== STATUSES ==========
+function tickStatuses() {
+  if (G.statuses.poison > 0) {
+    const d = rnd(3, 7);
+    G.hp -= d;
+    G.statuses.poison--;
+    log(`☠️ Яд нанёс ${d} урона.`);
+  }
+  if (G.statuses.burn > 0) {
+    const d = rnd(4, 8);
+    G.hp -= d;
+    G.statuses.burn--;
+    log(`🔥 Ожог нанёс ${d} урона.`);
+  }
+  if (G.statuses.bless > 0) G.statuses.bless--;
+  if (G.statuses.curse > 0) G.statuses.curse--;
+}
+
+// ========== RELICS ==========
+function pickRelic() {
+  const pool = [
+    { id: "vampirism", name: "Кровавый камень", desc: "Лечит 3 HP за убийство" },
+    { id: "greed", name: "Монета алчности", desc: "+40% золота с врагов" },
+    { id: "berserk", name: "Знак берсерка", desc: "Открывает способность Берсерк" },
+    { id: "ironwill", name: "Железная воля", desc: "+1 DEF навсегда" },
+    { id: "phoenix", name: "Перо феникса", desc: "Один раз спасает от смерти (50 HP)" },
+    { id: "scholar", name: "Книга теней", desc: "+25% опыта" },
+  ];
+  // filter already owned
+  const owned = new Set(G.relics.map(r => r.id));
+  const available = pool.filter(r => !owned.has(r.id));
+  if (available.length === 0) return { id: "goldpile", name: "Мешок золота", desc: "+50 золота" };
+  return pick(available);
+}
+
+function addRelic(rel) {
+  if (rel.id === "goldpile") {
+    G.gold += 50;
+    log("✨ Мешок золота! +50💰");
+    return;
+  }
+  G.relics.push(rel);
+  log(`✨ Реликвия получена: ${rel.name}!`);
+  if (rel.id === "ironwill") G.def += 1;
+  if (rel.id === "vampirism") {
+    // handled on kill later if needed
+  }
+}
+
+// ========== XP / LEVEL ==========
+function gainXP(n) {
+  if (G.relics.some(r => r.id === "scholar")) n = Math.floor(n * 1.25);
+  G.xp += n;
+  let need = 80 + G.level * 35;
+  while (G.xp >= need) {
+    G.xp -= need;
+    G.level++;
+    G.maxHp += 12;
+    G.hp = G.maxHp;
+    G.atk += 2;
+    log(`⭐ Уровень ${G.level}! HP полностью восстановлено, +2 ATK, +12 maxHP.`);
+    need = 80 + G.level * 35;
+  }
+}
+
+function takeDamage(amount) {
+  let dmg = Math.max(1, amount - Math.floor(G.def * 0.5));
+  if (G.statuses.shield > 0) {
+    dmg = Math.max(1, Math.floor(dmg * 0.6));
+    G.statuses.shield--;
+  }
+  G.hp -= dmg;
+}
+
+// ========== FLOW ==========
+function nextRoom() {
+  // Vampirism heal
+  if (G.relics.some(r => r.id === "vampirism") && combat === null) {
+    // already handled in winCombat roughly
+  }
+  if (G.room >= 100) {
+    return win();
+  }
+  G.room++;
+  // tick statuses between rooms lightly
+  if (G.statuses.poison > 0) {
+    G.hp -= 3;
+    G.statuses.poison--;
+    if (G.hp <= 0) return lose();
+  }
+  saveGame(true);
+  render();
+}
+
+function lose() {
+  // Phoenix check
+  const phoenix = G.relics.findIndex(r => r.id === "phoenix");
+  if (phoenix >= 0) {
+    G.relics.splice(phoenix, 1);
+    G.hp = 50;
+    log("🔥 Перо феникса спасло тебя от смерти! (реликвия исчезла)");
+    combat = null;
+    render();
+    return;
+  }
+  combat = null;
+  modal("☠️", "Ты погиб", `Дошёл до комнаты ${G.room}/100. Золото: ${G.gold}. Уровень: ${G.level}. Выборов сделано: ${G.flags.choicesMade}.`, [
+    ["🔄 Начать заново", () => { closeModal(); restart(); }]
+  ]);
+}
+
+function win() {
+  combat = null;
+  modal("🏆", "100 КОМНАТ ПРОЙДЕНЫ!", `Легенда! Уровень ${G.level}, золото ${G.gold}, атака ${G.atk}, реликвий ${G.relics.length}.`, [
+    ["🔥 Ещё раз", () => { closeModal(); restart(); }]
+  ]);
+}
+
+function modal(icon, title, text, buttons) {
+  $("modalIcon").textContent = icon;
+  $("modalTitle").textContent = title;
+  $("modalText").textContent = text;
+  $("modalButtons").innerHTML = buttons.map((b, i) =>
+    `<button class="${i === 0 ? 'primary' : ''}" onclick="window._mb[${i}]()">${b[0]}</button>`
+  ).join("");
+  window._mb = buttons.map(b => b[1]);
+  $("overlay").style.display = "flex";
+}
+
+function closeModal() {
+  $("overlay").style.display = "none";
+}
+
+// ========== SAVE ==========
+function saveGame(silent = false) {
+  try {
+    localStorage.setItem("rooms100_v2", JSON.stringify(G));
+    if (!silent) log("💾 Игра сохранена.");
+  } catch (e) {}
+}
+
+function loadGame() {
+  try {
+    const x = JSON.parse(localStorage.getItem("rooms100_v2"));
+    if (x && x.room && x.rooms) {
+      G = x;
+      combat = null;
+      // ensure statuses object
+      if (!G.statuses) G.statuses = {};
+      if (!G.relics) G.relics = [];
+      if (!G.flags) G.flags = { visitedShop: 0, killedElites: 0, choicesMade: 0 };
+      render();
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+function restart() {
+  localStorage.removeItem("rooms100_v2");
+  combat = null;
+  fresh();
+}
+
+// Start
+if (!loadGame()) fresh();
+</script>
+</body>
+</html>
