@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>100 Комнат — Тёмное подземелье</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#08080d;color:#eee;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+body{display:flex;justify-content:center}
+button{border:1px solid #3b3b55;background:#181827;color:#eee;border-radius:10px;padding:12px 10px;font-weight:800;font-size:15px;cursor:pointer}
+button:hover{filter:brightness(1.12)}button:active{transform:scale(.97)}button:disabled{opacity:.4;cursor:not-allowed}
+#app{width:min(900px,100%);min-height:100vh;background:#0d0d16;display:flex;flex-direction:column}
+header{padding:12px 14px;border-bottom:1px solid #29293b;background:#10101a;position:sticky;top:0;z-index:5}
+.brand{font-weight:900;letter-spacing:.6px}.sub{font-size:12px;color:#888;margin-top:2px}
+#stats{display:none;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:10px}
+.stat{background:#171722;border:1px solid #29293a;border-radius:8px;padding:7px 4px;text-align:center;font-size:12px}
+.stat b{display:block;font-size:15px;margin-top:2px}
+main{flex:1;padding:12px;display:flex;flex-direction:column;gap:10px}
+#scene{position:relative;height:300px;border:2px solid #303043;border-radius:14px;overflow:hidden;background:#0a0a11;box-shadow:inset 0 0 60px #000}
+.wall{position:absolute;inset:0 0 32% 0;background:repeating-linear-gradient(90deg,#252533 0 30px,#1e1e2a 30px 60px)}
+.floor{position:absolute;left:0;right:0;bottom:0;height:34%;background:repeating-linear-gradient(90deg,#28222b 0 36px,#211c24 36px 72px);border-top:3px solid #14141d}
+.torch{position:absolute;top:30px;font-size:28px}.ta{left:12%}.tb{right:12%}
+#roomBadge{position:absolute;z-index:2;left:10px;top:10px;background:#09090fd9;border:1px solid #38384a;padding:5px 8px;border-radius:7px;font-size:12px}
+#door{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);font-size:70px;opacity:.7}
+.sprite{position:absolute;bottom:70px;z-index:2;font-size:64px;filter:drop-shadow(0 8px 4px #000)}.hero{left:12%}.enemy{right:12%;display:none}
+.label{display:block;font-size:11px;background:#09090edb;border:1px solid #39394a;border-radius:5px;padding:2px 5px;text-align:center;margin-top:4px}
+#roomType{text-align:center;color:#8d8d9d;font-size:12px;letter-spacing:2px;font-weight:900}
+#title{text-align:center;font-size:24px;font-weight:900;color:#bcaeff}
+#desc{text-align:center;color:#aaa;line-height:1.45;min-height:40px;font-size:15px}
+#enemyPanel{display:none;background:#15151f;border:1px solid #49303a;border-radius:10px;padding:10px}
+.hpbar{height:10px;background:#242430;border-radius:6px;overflow:hidden;margin:6px 0}.hpfill{height:100%;background:#b85b68;width:100%;transition:.2s}
+#intent{text-align:center;font-size:13px;font-weight:800;margin-top:4px}
+#energy{display:none;font-size:13px;color:#aaa;text-align:center}
+#energyFill{height:7px;background:#8d77cf;width:100%;border-radius:4px;margin-top:4px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.actions .wide{grid-column:1/-1}
+.primary{background:#2b2050;border-color:#5e4a98}.danger{background:#401a27;border-color:#793449}.good{background:#173626;border-color:#2e6947}
+#paths{display:none;grid-template-columns:1fr;gap:8px}
+#log{height:100px;overflow:auto;background:#090910;border:1px solid #242433;border-radius:9px;padding:8px;font-size:12px;color:#999}
+#meta{display:none;border-top:1px solid #29293b;background:#10101a;padding:10px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tabs button{font-size:12px;padding:9px 4px}
+#panel{display:none;margin-top:8px;background:#0b0b12;border:1px solid #29293a;border-radius:10px;padding:9px;max-height:240px;overflow:auto}
+.card{padding:9px;border:1px solid #2c2c3d;border-radius:8px;margin:6px 0;background:#151520;font-size:12px}
+.card button{float:right;padding:5px 8px;font-size:11px}
+.common{border-color:#555}.uncommon{border-color:#569b72}.rare{border-color:#527bb4}.epic{border-color:#8957a9}.legendary{border-color:#b38a37}
+.small{font-size:11px;color:#999}.center{text-align:center}
+#startOverlay{position:fixed;inset:0;background:#08080df2;display:flex;align-items:center;justify-content:center;z-index:30;padding:16px;overflow:auto}
+.startBox{width:min(520px,100%);background:#11111c;border:1px solid #39394e;border-radius:16px;padding:20px;text-align:center}
+.startBox h1{margin-bottom:6px}
+.startBox p{color:#aaa;font-size:14px;margin-bottom:14px}
+.story-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}
+.story-card{background:#151521;border:1px solid #343448;border-radius:12px;padding:12px;text-align:left;cursor:pointer;min-height:120px}
+.story-card:hover{filter:brightness(1.08)}
+.story-card.selected{border-color:#b9a7ff;box-shadow:0 0 0 2px #51438a inset}
+.story-card h3{margin:0 0 4px;font-size:15px}
+.story-card p{margin:0;color:#aaa;font-size:12px;line-height:1.4}
+.story-tag{display:inline-block;font-size:10px;padding:2px 6px;border-radius:99px;background:#25243a;color:#c9bfff;margin-bottom:6px}
+.diffs{display:grid;gap:8px;margin-top:14px}
+.diffs button span{display:block;font-size:12px;font-weight:500;opacity:.8;margin-top:3px}
+#resultOverlay{position:fixed;inset:0;background:#08080df2;display:none;align-items:center;justify-content:center;z-index:40;padding:20px}
+.resultBox{width:min(400px,100%);background:#11111c;border:1px solid #39394e;border-radius:16px;padding:24px;text-align:center}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#15151f;border:1px solid #55556a;padding:10px 16px;border-radius:9px;opacity:0;pointer-events:none;transition:.25s;z-index:50}
+#toast.on{opacity:1}
+@media(max-width:600px){
+  #stats{grid-template-columns:repeat(3,1fr)}
+  #scene{height:240px}
+  .sprite{font-size:52px;bottom:55px}
+  .story-grid{grid-template-columns:1fr}
+  .tabs{grid-template-columns:repeat(2,1fr)}
+  #title{font-size:20px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">🕯️ 100 КОМНАТ</div>
+    <div class="sub">Тёмное подземелье · roguelite</div>
+    <div id="stats">
+      <div class="stat">Комната<b id="sRoom">1</b></div>
+      <div class="stat">❤️ HP<b id="sHp">100/100</b></div>
+      <div class="stat">⚔️ ATK<b id="sAtk">10</b></div>
+      <div class="stat">🛡️ DEF<b id="sDef">0</b></div>
+      <div class="stat">💰 Золото<b id="sGold">20</b></div>
+      <div class="stat">🪙 Монеты<b id="sCoins">0</b></div>
+    </div>
+  </header>
+
+  <main>
+    <section id="scene">
+      <div class="wall"></div>
+      <div class="floor"></div>
+      <div class="torch ta">🔥</div>
+      <div class="torch tb">🔥</div>
+      <div id="roomBadge">Вход</div>
+      <div id="door">🚪</div>
+      <div id="heroSprite" class="sprite hero">🧙<span class="label" id="heroLabel">Герой</span></div>
+      <div id="enemySprite" class="sprite enemy">👹<span class="label" id="enemyLabel">Враг</span></div>
+    </section>
+
+    <div id="roomType">ВХОД</div>
+    <div id="title">100 Комнат</div>
+    <div id="desc">Выбери историю и сложность</div>
+
+    <div id="enemyPanel">
+      <div class="center"><b id="enemyName">Враг</b></div>
+      <div class="hpbar"><div id="enemyHpFill" class="hpfill"></div></div>
+      <div id="enemyHpText" class="center small">0 / 0</div>
+      <div id="intent">Враг готовит удар</div>
+    </div>
+
+    <div id="energy">Энергия: <b id="energyText">3/3</b><div id="energyFill"></div></div>
+
+    <div id="paths"></div>
+
+    <div class="actions" id="actions">
+      <button id="mainBtn" class="primary wide">Начать</button>
+      <button id="attackBtn" class="danger" style="display:none">⚔️ Атака</button>
+      <button id="heavyBtn" style="display:none">💥 Тяжёлый (2⚡)</button>
+      <button id="blockBtn" style="display:none">🛡️ Блок</button>
+      <button id="potionBtn" style="display:none">🧪 Зелье</button>
+      <button id="runBtn" style="display:none">🏃 Бежать</button>
+    </div>
+
+    <div id="log"></div>
+  </main>
+
+  <section id="meta">
+    <div class="tabs">
+      <button id="shopTab">🛒 Магазин</button>
+      <button id="invTab">🎒 Инвентарь</button>
+      <button id="charTab">👤 Герои</button>
+      <button id="extraTab">🔮 Артефакты</button>
+    </div>
+    <div id="panel"></div>
+  </section>
+</div>
+
+<!-- СТАРТ -->
+<div id="startOverlay">
+  <div class="startBox">
+    <h1>🕯️ 100 Комнат</h1>
+    <p>Сначала выбери историю, потом сложность — забег начнётся сразу.</p>
+    <div id="storyGrid" class="story-grid"></div>
+    <div id="selectedStory" style="color:#c9bfff;font-size:13px;margin:8px 0;min-height:18px"></div>
+    <div style="font-size:12px;color:#888;font-weight:800;margin-top:10px">Сложность</div>
+    <div class="diffs">
+      <button data-d="easy" class="good">🟢 Лёгкий<span>Враги слабее · лечение сильнее</span></button>
+      <button data-d="normal" class="primary">🟣 Нормальный<span>Стандартный баланс</span></button>
+      <button data-d="hard" class="danger">🔴 Сложный<span>Сильнее враги · меньше ресурсов</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- РЕЗУЛЬТАТ -->
+<div id="resultOverlay">
+  <div class="resultBox">
+    <h2 id="resultTitle">Забег завершён</h2>
+    <p id="resultText" style="color:#aaa;margin:12px 0"></p>
+    <button id="newRunBtn" class="primary wide">Новый забег</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+
+const STORAGE_KEY = "rooms100_v4";
+
+function $(id){ return document.getElementById(id); }
+function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function chance(p){ return Math.random()*100 < p; }
+function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+
+function log(msg){
+  const d = document.createElement("div");
+  d.textContent = msg;
+  $("log").prepend(d);
+}
+
+let toastT;
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>t.classList.remove("on"),1800);
+}
+
+/* ========== ДАННЫЕ ========== */
+const STORIES = {
+  dark_forest:{name:"Тёмный лес",icon:"🌲",tag:"Проклятие",desc:"Туман, волки и древние алтари.",enemies:["Волк","Лесной разбойник","Теневой паук","Лесная ведьма"],elite:"Лесной охотник",boss:"Владыка чащи"},
+  goblin_forest:{name:"Гоблинский лес",icon:"👺",tag:"Налёт",desc:"Норы, засады и жадные гоблины.",enemies:["Гоблин","Гоблин-лучник","Гоблин-вор","Гоблин-шаман"],elite:"Гоблинский вождь",boss:"Король гоблинов"},
+  cursed_mines:{name:"Проклятые шахты",icon:"⛏️",tag:"Руда",desc:"Заброшенные шахты и живой камень.",enemies:["Шахтёр-нежить","Каменный паразит","Проклятый шахтёр","Пещерный страж"],elite:"Железный голем",boss:"Сердце шахты"},
+  drowned_ruins:{name:"Затонувшие руины",icon:"🌊",tag:"Тайна",desc:"Подводный храм и утопленники.",enemies:["Утопленник","Храмовый страж","Водяная тень","Проклятый жрец"],elite:"Безликий страж",boss:"Хозяин руин"},
+  ash_wastes:{name:"Пепельные пустоши",icon:"🔥",tag:"Огонь",desc:"Выжженные коридоры культа огня.",enemies:["Пепельный культист","Огненный зверь","Пепельная крыса","Огненный фанатик"],elite:"Палач пепла",boss:"Повелитель пламени"},
+  frozen_pass:{name:"Замёрзший перевал",icon:"❄️",tag:"Холод",desc:"Лёд сковал старое святилище.",enemies:["Ледяной волк","Замёрзший воин","Снежный паразит","Ледяной маг"],elite:"Ледяной рыцарь",boss:"Сердце зимы"}
+};
+
+const DIFF = {
+  easy:  {name:"Лёгкий",     hp:0.7, atk:0.7, reward:1.3, potion:45, potions:3},
+  normal:{name:"Нормальный", hp:1.0, atk:1.0, reward:1.0, potion:35, potions:2},
+  hard:  {name:"Сложный",    hp:1.4, atk:1.3, reward:0.8, potion:28, potions:1}
+};
+
+const RARITY = {
+  common:   {name:"Обычная",   css:"common",   w:50},
+  uncommon: {name:"Необычная", css:"uncommon", w:25},
+  rare:     {name:"Редкая",    css:"rare",     w:15},
+  epic:     {name:"Эпическая", css:"epic",     w:7},
+  legendary:{name:"Легендарная",css:"legendary",w:3}
+};
+
+const WEAPONS = [
+  {id:"rust",name:"Ржавый меч",icon:"⚔️",rarity:"common",attack:10,desc:"+10 ATK"},
+  {id:"dagger",name:"Кинжал",icon:"🗡️",rarity:"uncommon",attack:8,crit:12,desc:"+8 ATK · +12% крит"},
+  {id:"axe",name:"Боевой топор",icon:"🪓",rarity:"rare",attack:15,heavy:25,desc:"+15 ATK · тяжёлый +25%"},
+  {id:"scythe",name:"Коса ночи",icon:"☾",rarity:"epic",attack:13,killHeal:5,desc:"+13 ATK · +5 HP за убийство"},
+  {id:"cursed",name:"Проклятый клинок",icon:"🩸",rarity:"legendary",attack:22,crit:10,cursed:2,desc:"+22 ATK · +10% крит · -2 HP/удар"}
+];
+
+const HEROES = [
+  {id:"knight",name:"Рыцарь",icon:"🛡️",rarity:"common",maxHp:25,desc:"+25 MAX HP"},
+  {id:"rogue",name:"Разбойник",icon:"🥷",rarity:"uncommon",crit:15,desc:"+15% крит"},
+  {id:"mage",name:"Маг",icon:"🧙",rarity:"rare",potionBonus:20,desc:"+20% лечение зелий"},
+  {id:"hunter",name:"Охотник",icon:"🏹",rarity:"epic",double:10,desc:"10% двойной удар"},
+  {id:"berserk",name:"Берсерк",icon:"🪓",rarity:"legendary",lowHp:40,desc:"+40% урона при HP ≤ 30%"}
+];
+
+const ARMOR = [
+  {id:"cloth",name:"Старая одежда",icon:"👕",rarity:"common",def:2,desc:"+2 DEF"},
+  {id:"leather",name:"Кожаная броня",icon:"🧥",rarity:"uncommon",def:5,desc:"+5 DEF"},
+  {id:"chain",name:"Кольчуга",icon:"⛓️",rarity:"rare",def:8,maxHp:10,desc:"+8 DEF · +10 HP"},
+  {id:"shadow",name:"Теневой доспех",icon:"🥷",rarity:"epic",def:6,dodge:12,desc:"+6 DEF · 12% уклонения"},
+  {id:"void",name:"Доспех Бездны",icon:"🛡️",rarity:"legendary",def:12,maxHp:20,dodge:5,desc:"+12 DEF · +20 HP · 5% уклонения"}
+];
+
+const ARTIFACTS = [
+  {id:"skull",name:"Череп вампира",icon:"💀",rarity:"common",killHeal:3,desc:"+3 HP после убийства"},
+  {id:"eye",name:"Око Бездны",icon:"👁️",rarity:"uncommon",critDmg:25,desc:"+25% крит. урона"},
+  {id:"mirror",name:"Зеркало",icon:"🪞",rarity:"rare",reflect:12,desc:"12% шанс вернуть 50% урона"},
+  {id:"clock",name:"Сломанные часы",icon:"⏱️",rarity:"epic",skip:8,desc:"8% шанс пропустить ответный удар"},
+  {id:"blood",name:"Кровавый камень",icon:"🔴",rarity:"legendary",lowHp:40,desc:"+40% урона при HP ≤ 30%"}
+];
+
+/* ========== СОСТОЯНИЕ ========== */
+let meta = {
+  coins:0,
+  collections:{weapons:[],heroes:[],armor:[],artifacts:[]},
+  equip:{weapon:null,hero:null,armor:null,artifact:null}
+};
+
+let game = {
+  room:0, hp:100, maxHp:100, atk:10, def:0,
+  gold:20, potions:2, energy:3, maxEnergy:3,
+  difficulty:"normal", storyKey:null,
+  inFight:false, enemy:null, blocking:false,
+  started:false
+};
+
+let selectedStory = null;
+
+/* ========== СОХРАНЕНИЕ ========== */
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(meta));
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const data = JSON.parse(raw);
+      meta.coins = data.coins || 0;
+      meta.collections = data.collections || meta.collections;
+      meta.equip = data.equip || meta.equip;
+    }
+  }catch(e){}
+}
+
+/* ========== ВСПОМОГАТЕЛЬНЫЕ ========== */
+function pickByRarity(list){
+  const total = Object.values(RARITY).reduce((s,r)=>s+r.w,0);
+  let roll = Math.random()*total;
+  let rarity = "common";
+  for(const [k,v] of Object.entries(RARITY)){
+    if(roll < v.w){ rarity=k; break; }
+    roll -= v.w;
+  }
+  const pool = list.filter(i=>i.rarity===rarity);
+  return pool.length ? pool[rand(0,pool.length-1)] : list[0];
+}
+
+function owned(type){
+  return meta.collections[type] || [];
+}
+function isOwned(type,id){
+  return owned(type).includes(id);
+}
+function addToCollection(type,item){
+  if(!isOwned(type,item.id)){
+    meta.collections[type].push(item.id);
+    save();
+    return true;
+  }
+  return false;
+}
+function getItem(type,id){
+  const lists = {weapons:WEAPONS,heroes:HEROES,armor:ARMOR,artifacts:ARTIFACTS};
+  return lists[type].find(i=>i.id===id);
+}
+function equipment(){
+  return {
+    weapon: meta.equip.weapon ? getItem("weapons",meta.equip.weapon) : null,
+    hero:   meta.equip.hero   ? getItem("heroes",meta.equip.hero)   : null,
+    armor:  meta.equip.armor  ? getItem("armor",meta.equip.armor)   : null,
+    artifact: meta.equip.artifact ? getItem("artifacts",meta.equip.artifact) : null
+  };
+}
+
+function recalculate(){
+  const e = equipment();
+  let maxHp = 100;
+  let atk = 10;
+  let def = 0;
+
+  if(e.weapon) atk = e.weapon.attack || 10;
+  if(e.hero && e.hero.maxHp) maxHp += e.hero.maxHp;
+  if(e.armor){
+    def += e.armor.def || 0;
+    if(e.armor.maxHp) maxHp += e.armor.maxHp;
+  }
+
+  game.maxHp = maxHp;
+  game.atk = atk;
+  game.def = def;
+  if(game.hp > game.maxHp) game.hp = game.maxHp;
+}
+
+/* ========== РЕНДЕР ========== */
+function render(){
+  $("sRoom").textContent = game.room || 1;
+  $("sHp").textContent = Math.ceil(game.hp)+"/"+game.maxHp;
+  $("sAtk").textContent = game.atk;
+  $("sDef").textContent = game.def;
+  $("sGold").textContent = game.gold;
+  $("sCoins").textContent = meta.coins;
+
+  const e = equipment();
+  $("heroLabel").textContent = e.hero ? e.hero.name : "Герой";
+  $("heroSprite").childNodes[0].textContent = e.hero ? e.hero.icon : "🧙";
+
+  if(game.inFight && game.enemy){
+    $("enemyPanel").style.display = "block";
+    $("enemySprite").style.display = "block";
+    $("enemyName").textContent = game.enemy.name;
+    $("enemyLabel").textContent = game.enemy.name;
+    const pct = Math.max(0, game.enemy.hp / game.enemy.maxHp * 100);
+    $("enemyHpFill").style.width = pct+"%";
+    $("enemyHpText").textContent = Math.ceil(game.enemy.hp)+" / "+game.enemy.maxHp;
+    $("energy").style.display = "block";
+    $("energyText").textContent = game.energy+"/"+game.maxEnergy;
+    $("energyFill").style.width = (game.energy/game.maxEnergy*100)+"%";
+  } else {
+    $("enemyPanel").style.display = "none";
+    $("enemySprite").style.display = "none";
+    $("energy").style.display = "none";
+  }
+}
+
+function showCombatButtons(show){
+  $("attackBtn").style.display = show ? "block" : "none";
+  $("heavyBtn").style.display  = show ? "block" : "none";
+  $("blockBtn").style.display  = show ? "block" : "none";
+  $("potionBtn").style.display = show ? "block" : "none";
+  $("runBtn").style.display    = show ? "block" : "none";
+  $("mainBtn").style.display   = show ? "none"  : "block";
+}
+
+/* ========== СТАРТ ========== */
+function renderStories(){
+  const grid = $("storyGrid");
+  grid.innerHTML = "";
+  for(const [key,s] of Object.entries(STORIES)){
+    const card = document.createElement("div");
+    card.className = "story-card" + (selectedStory===key ? " selected" : "");
+    card.innerHTML = `<div class="story-tag">${s.tag}</div><h3>${s.icon} ${s.name}</h3><p>${s.desc}</p>`;
+    card.onclick = ()=>{
+      selectedStory = key;
+      renderStories();
+      $("selectedStory").textContent = "Выбрано: "+s.name;
+    };
+    grid.appendChild(card);
+  }
+}
+
+function startGame(diff){
+  if(!selectedStory){
+    toast("Сначала выбери историю");
+    return;
+  }
+  game = {
+    room:0, hp:100, maxHp:100, atk:10, def:0,
+    gold: diff==="hard" ? 12 : 25,
+    potions: DIFF[diff].potions,
+    energy:3, maxEnergy:3,
+    difficulty:diff, storyKey:selectedStory,
+    inFight:false, enemy:null, blocking:false,
+    started:true
+  };
+  recalculate();
+  game.hp = game.maxHp;
+
+  $("startOverlay").style.display = "none";
+  $("stats").style.display = "grid";
+  $("meta").style.display = "block";
+  $("resultOverlay").style.display = "none";
+
+  log("Сложность: "+DIFF[diff].name);
+  log("История: "+STORIES[selectedStory].name);
+  log("Ты входишь в подземелье...");
+  nextRoom();
+}
+
+/* ========== КОМНАТЫ ========== */
+function nextRoom(){
+  game.room++;
+  game.inFight = false;
+  game.blocking = false;
+  game.energy = game.maxEnergy;
+  showCombatButtons(false);
+  $("paths").style.display = "none";
+  $("paths").innerHTML = "";
+
+  let type;
+  if(game.room % 10 === 0) type = "boss";
+  else if(game.room % 5 === 0 && chance(40)) type = "elite";
+  else {
+    const r = Math.random();
+    if(r < 0.40) type = "enemy";
+    else if(r < 0.58) type = "treasure";
+    else if(r < 0.70) type = "trap";
+    else if(r < 0.85) type = "event";
+    else type = "rest";
+  }
+
+  $("roomBadge").textContent = "Комната "+game.room;
+
+  if(type==="enemy" || type==="elite" || type==="boss") startFight(type);
+  else if(type==="treasure") treasureRoom();
+  else if(type==="trap") trapRoom();
+  else if(type==="event") eventRoom();
+  else restRoom();
+
+  render();
+}
+
+function startFight(type){
+  const story = STORIES[game.storyKey];
+  const d = DIFF[game.difficulty];
+  let name, baseHp, baseAtk;
+
+  if(type==="boss"){
+    name = story.boss;
+    baseHp = 90 + game.room*4;
+    baseAtk = 14 + Math.floor(game.room/4);
+  } else if(type==="elite"){
+    name = story.elite;
+    baseHp = 55 + game.room*2.5;
+    baseAtk = 11 + Math.floor(game.room/5);
+  } else {
+    name = story.enemies[rand(0,story.enemies.length-1)];
+    baseHp = 28 + game.room*1.6;
+    baseAtk = 7 + Math.floor(game.room/6);
+  }
+
+  game.enemy = {
+    name,
+    hp: Math.floor(baseHp * d.hp),
+    maxHp: Math.floor(baseHp * d.hp),
+    atk: Math.floor(baseAtk * d.atk),
+    type
+  };
+  game.inFight = true;
+
+  $("roomType").textContent = type==="boss" ? "БОСС" : type==="elite" ? "ЭЛИТА" : "БОЙ";
+  $("title").textContent = name;
+  $("desc").textContent = type==="boss" ? "Дверь захлопнулась за твоей спиной..." : "Из темноты появляется враг!";
+  $("door").textContent = type==="boss" ? "👑" : "⚔️";
+  $("intent").textContent = "Враг готовит удар";
+
+  showCombatButtons(true);
+  log((type==="boss"?"👑 Босс: ":"⚔️ ")+name);
+  render();
+}
+
+/* ========== БОЙ ========== */
+function getPlayerDamage(isHeavy){
+  let dmg = game.atk + rand(-2,3);
+  const e = equipment();
+
+  if(isHeavy){
+    dmg = Math.floor(dmg * 1.6);
+    if(e.weapon && e.weapon.heavy) dmg = Math.floor(dmg * (1 + e.weapon.heavy/100));
+  }
+
+  let critChance = 5;
+  if(e.weapon && e.weapon.crit) critChance += e.weapon.crit;
+  if(e.hero && e.hero.crit) critChance += e.hero.crit;
+
+  if(chance(critChance)){
+    let mult = 1.8;
+    if(e.artifact && e.artifact.critDmg) mult += e.artifact.critDmg/100;
+    dmg = Math.floor(dmg * mult);
+    log("💥 Критический удар!");
+  }
+
+  // Берсерк / кровавый камень
+  const lowHpBonus = (e.hero?.lowHp||0) + (e.artifact?.lowHp||0);
+  if(lowHpBonus && game.hp/game.maxHp <= 0.3){
+    dmg = Math.floor(dmg * (1 + lowHpBonus/100));
+  }
+
+  // Двойной удар
+  if(e.hero && e.hero.double && chance(e.hero.double)){
+    log("🏹 Двойной удар!");
+    dmg = Math.floor(dmg * 1.7);
+  }
+
+  // Проклятие
+  if(e.weapon && e.weapon.cursed){
+    game.hp = Math.max(1, game.hp - e.weapon.cursed);
+  }
+
+  return Math.max(1, dmg);
+}
+
+function playerAttack(isHeavy){
+  if(!game.inFight) return;
+  if(isHeavy && game.energy < 2){
+    toast("Не хватает энергии");
+    return;
+  }
+  if(!isHeavy && game.energy < 1){
+    toast("Не хватает энергии");
+    return;
+  }
+
+  game.energy -= isHeavy ? 2 : 1;
+  const dmg = getPlayerDamage(isHeavy);
+  game.enemy.hp -= dmg;
+  log(`Ты нанёс ${dmg} урона`);
+
+  if(game.enemy.hp <= 0){
+    winFight();
+    return;
+  }
+
+  // Шанс пропустить ответный удар
+  const e = equipment();
+  if(e.artifact && e.artifact.skip && chance(e.artifact.skip)){
+    log("⏱️ Враг промахнулся!");
+    render();
+    return;
+  }
+
+  enemyTurn();
+}
+
+function enemyTurn(){
+  if(game.blocking){
+    log("🛡️ Ты заблокировал удар!");
+    game.blocking = false;
+    render();
+    return;
+  }
+
+  const e = equipment();
+  // Уклонение
+  let dodge = 0;
+  if(e.armor && e.armor.dodge) dodge += e.armor.dodge;
+  if(chance(dodge)){
+    log("💨 Ты уклонился!");
+    render();
+    return;
+  }
+
+  let dmg = Math.max(1, game.enemy.atk + rand(-2,3) - game.def);
+
+  // Отражение
+  if(e.artifact && e.artifact.reflect && chance(e.artifact.reflect)){
+    const reflected = Math.floor(dmg * 0.5);
+    game.enemy.hp -= reflected;
+    log(`🪞 Отражено ${reflected} урона!`);
+    if(game.enemy.hp <= 0){
+      winFight();
+      return;
+    }
+  }
+
+  game.hp -= dmg;
+  log(`Враг ударил на ${dmg}`);
+
+  if(game.hp <= 0){
+    death();
+    return;
+  }
+  render();
+}
+
+function winFight(){
+  const d = DIFF[game.difficulty];
+  const isBoss = game.enemy.type === "boss";
+  const isElite = game.enemy.type === "elite";
+
+  let gold = Math.floor((isBoss ? 45+game.room : isElite ? 22+game.room/2 : 10+rand(0,8)) * d.reward);
+  let coins = isBoss ? rand(8,14) : isElite ? rand(4,8) : rand(1,4);
+
+  game.gold += gold;
+  meta.coins += coins;
+
+  const e = equipment();
+  let heal = (e.weapon?.killHeal||0) + (e.artifact?.killHeal||0);
+  if(heal){
+    game.hp = clamp(game.hp + heal, 0, game.maxHp);
+    log(`❤️ +${heal} HP от снаряжения`);
+  }
+
+  log(`🏆 Победа! +${gold}💰 +${coins}🪙`);
+
+  // Шанс дропа
+  const dropChance = isBoss ? 100 : isElite ? 55 : 18;
+  if(chance(dropChance)) awardItem();
+
+  game.inFight = false;
+  game.enemy = null;
+  showCombatButtons(false);
+  $("mainBtn").textContent = game.room >= 100 ? "Завершить" : "Идти дальше";
+  $("mainBtn").onclick = ()=> game.room>=100 ? winGame() : nextRoom();
+  $("roomType").textContent = "ПОБЕДА";
+  $("title").textContent = "Враг повержен";
+  $("desc").textContent = "Путь свободен.";
+  $("door").textContent = "✅";
+  save();
+  render();
+}
+
+function awardItem(){
+  const cats = [
+    {list:WEAPONS, type:"weapons"},
+    {list:HEROES, type:"heroes"},
+    {list:ARMOR, type:"armor"},
+    {list:ARTIFACTS, type:"artifacts"}
+  ];
+  const cat = cats[rand(0,3)];
+  const item = pickByRarity(cat.list);
+  if(addToCollection(cat.type, item)){
+    log(`🎁 Найдено: ${item.icon} ${item.name} (${RARITY[item.rarity].name})`);
+    toast("Новый предмет: "+item.name);
+  } else {
+    meta.coins += 12;
+    log(`♻️ Дубликат → +12 монет`);
+  }
+  save();
+}
+
+/* ========== ДРУГИЕ КОМНАТЫ ========== */
+function treasureRoom(){
+  $("roomType").textContent = "СОКРОВИЩЕ";
+  $("title").textContent = "Старый сундук";
+  $("desc").textContent = "Пыльный сундук. Что внутри?";
+  $("door").textContent = "📦";
+  $("mainBtn").textContent = "Открыть";
+  $("mainBtn").className = "primary wide";
+  $("mainBtn").onclick = ()=>{
+    const r = Math.random();
+    if(r < 0.45){
+      const g = rand(18,40);
+      game.gold += g;
+      meta.coins += rand(2,5);
+      log(`💰 +${g} золота`);
+    } else if(r < 0.7){
+      game.potions++;
+      log("🧪 Найдено зелье");
+    } else {
+      awardItem();
+    }
+    finishRoom();
+  };
+  render();
+}
+
+function trapRoom(){
+  $("roomType").textContent = "ЛОВУШКА";
+  $("title").textContent = "Подозрительный пол";
+  $("desc").textContent = "Здесь что-то не так...";
+  $("door").textContent = "⚠️";
+  $("mainBtn").textContent = "Пройти";
+  $("mainBtn").className = "danger wide";
+  $("mainBtn").onclick = ()=>{
+    if(chance(35)){
+      game.gold += rand(8,15);
+      log("✅ Ловушка обезврежена");
+    } else {
+      const dmg = Math.max(1, rand(14,26) - game.def);
+      game.hp -= dmg;
+      log(`💥 Ловушка! -${dmg} HP`);
+      if(game.hp <= 0){ death(); return; }
+    }
+    finishRoom();
+  };
+  render();
+}
+
+function eventRoom(){
+  $("roomType").textContent = "СОБЫТИЕ";
+  $("title").textContent = "Странная встреча";
+  $("desc").textContent = "Незнакомец предлагает выбор.";
+  $("door").textContent = "❓";
+  $("mainBtn").style.display = "none";
+
+  const paths = $("paths");
+  paths.style.display = "grid";
+  paths.innerHTML = "";
+
+  const choices = [
+    {t:"✨ Исцеление", d:"Восстановить HP", fn:()=>{
+      const h = rand(20,35);
+      game.hp = clamp(game.hp+h,0,game.maxHp);
+      log(`✨ +${h} HP`);
+      finishRoom();
+    }},
+    {t:"💰 Золото", d:"Получить золото", fn:()=>{
+      const g = rand(15,30);
+      game.gold += g;
+      log(`💰 +${g} золота`);
+      finishRoom();
+    }},
+    {t:"🎁 Поиск", d:"Шанс найти предмет", fn:()=>{
+      if(chance(60)) awardItem();
+      else { game.potions++; log("🧪 Найдено зелье"); }
+      finishRoom();
+    }}
+  ];
+
+  choices.forEach(c=>{
+    const b = document.createElement("button");
+    b.className = "primary";
+    b.innerHTML = `<b>${c.t}</b><br><span class="small">${c.d}</span>`;
+    b.onclick = c.fn;
+    paths.appendChild(b);
+  });
+  render();
+}
+
+function restRoom(){
+  $("roomType").textContent = "ОТДЫХ";
+  $("title").textContent = "Костёр";
+  $("desc").textContent = "Можно перевести дух.";
+  $("door").textContent = "🔥";
+  $("mainBtn").textContent = "Отдохнуть";
+  $("mainBtn").className = "good wide";
+  $("mainBtn").onclick = ()=>{
+    const h = rand(22,38);
+    game.hp = clamp(game.hp+h,0,game.maxHp);
+    log(`🔥 +${h} HP`);
+    finishRoom();
+  };
+  render();
+}
+
+function finishRoom(){
+  game.inFight = false;
+  showCombatButtons(false);
+  $("paths").style.display = "none";
+  $("mainBtn").style.display = "block";
+  $("mainBtn").className = "primary wide";
+  $("mainBtn").textContent = game.room >= 100 ? "Завершить историю" : "Идти дальше";
+  $("mainBtn").onclick = ()=> game.room>=100 ? winGame() : nextRoom();
+  $("roomType").textContent = "ГОТОВО";
+  $("title").textContent = "Путь открыт";
+  $("desc").textContent = "Можно двигаться дальше.";
+  $("door").textContent = "➡️";
+  save();
+  render();
+}
+
+/* ========== СМЕРТЬ / ПОБЕДА ========== */
+function death(){
+  game.hp = 0;
+  game.started = false;
+  showCombatButtons(false);
+  log(`☠️ Смерть на комнате ${game.room}`);
+  $("resultTitle").textContent = "☠️ Ты погиб";
+  $("resultText").textContent = `История «${STORIES[game.storyKey].name}» закончилась на комнате ${game.room}. Монеты и коллекция сохранены.`;
+  $("resultOverlay").style.display = "flex";
+  save();
+  render();
+}
+
+function winGame(){
+  game.started = false;
+  meta.coins += 50;
+  log("🏆 100 комнат пройдены! +50 монет");
+  $("resultTitle").textContent = "🏆 ПОБЕДА";
+  $("resultText").textContent = `История «${STORIES[game.storyKey].name}» пройдена на сложности «${DIFF[game.difficulty].name}». +50 постоянных монет.`;
+  $("resultOverlay").style.display = "flex";
+  save();
+  render();
+}
+
+function newRun(){
+  $("resultOverlay").style.display = "none";
+  $("startOverlay").style.display = "flex";
+  $("stats").style.display = "none";
+  $("meta").style.display = "none";
+  selectedStory = null;
+  $("selectedStory").textContent = "";
+  $("log").innerHTML = "";
+  renderStories();
+}
+
+/* ========== МАГАЗИН / ИНВЕНТАРЬ ========== */
+function openPanel(mode){
+  const panel = $("panel");
+  panel.style.display = "block";
+  panel.innerHTML = "";
+
+  if(mode==="shop"){
+    panel.innerHTML = `<div class="center"><b>🛒 Магазин</b><div class="small">Монеты: ${meta.coins} 🪙 (не сгорают)</div></div>`;
+    const chests = [
+      {title:"🗡️ Сундук оружия", cost:100, list:WEAPONS, type:"weapons"},
+      {title:"👤 Сундук героя", cost:150, list:HEROES, type:"heroes"},
+      {title:"🛡️ Сундук брони", cost:100, list:ARMOR, type:"armor"},
+      {title:"🔮 Сундук артефакта", cost:125, list:ARTIFACTS, type:"artifacts"}
+    ];
+    chests.forEach(c=>{
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `<b>${c.title}</b><br><span class="small">Случайный предмет</span>`;
+      const btn = document.createElement("button");
+      btn.textContent = c.cost+" 🪙";
+      btn.onclick = ()=>{
+        if(meta.coins < c.cost){ toast("Не хватает монет"); return; }
+        meta.coins -= c.cost;
+        const item = pickByRarity(c.list);
+        if(addToCollection(c.type, item)){
+          toast("Получено: "+item.name);
+          log(`🎁 ${item.icon} ${item.name}`);
+        } else {
+          meta.coins += 20;
+          toast("Дубликат → +20 монет");
+        }
+        save();
+        openPanel("shop");
+        render();
+      };
+      card.appendChild(btn);
+      panel.appendChild(card);
+    });
+  }
+
+  if(mode==="inv"){
+    panel.innerHTML = "<b>Оружие и броня</b>";
+    renderEquipList(panel, "weapons", WEAPONS, "weapon");
+    renderEquipList(panel, "armor", ARMOR, "armor");
+  }
+  if(mode==="heroes"){
+    panel.innerHTML = "<b>Герои</b>";
+    renderEquipList(panel, "heroes", HEROES, "hero");
+  }
+  if(mode==="artifacts"){
+    panel.innerHTML = "<b>Артефакты</b>";
+    renderEquipList(panel, "artifacts", ARTIFACTS, "artifact");
+  }
+}
+
+function renderEquipList(panel, type, list, equipKey){
+  const ownedIds = owned(type);
+  list.filter(i=>ownedIds.includes(i.id)).forEach(item=>{
+    const card = document.createElement("div");
+    card.className = "card "+RARITY[item.rarity].css;
+    const eq = meta.equip[equipKey] === item.id;
+    card.innerHTML = `<b>${item.icon} ${item.name}</b> · ${RARITY[item.rarity].name}<br><span class="small">${item.desc}</span>`;
+    const btn = document.createElement("button");
+    btn.textContent = eq ? "Надето" : "Надеть";
+    btn.disabled = eq;
+    btn.onclick = ()=>{
+      meta.equip[equipKey] = item.id;
+      recalculate();
+      save();
+      toast("Надето: "+item.name);
+      openPanel(type==="weapons"||type==="armor" ? "inv" : type==="heroes" ? "heroes" : "artifacts");
+      render();
+    };
+    card.appendChild(btn);
+    panel.appendChild(card);
+  });
+  if(ownedIds.length===0){
+    const empty = document.createElement("div");
+    empty.className = "small center";
+    empty.textContent = "Пока пусто";
+    panel.appendChild(empty);
+  }
+}
+
+/* ========== КНОПКИ ========== */
+$("attackBtn").onclick = ()=>playerAttack(false);
+$("heavyBtn").onclick  = ()=>playerAttack(true);
+$("blockBtn").onclick  = ()=>{
+  if(game.energy < 1){ toast("Нет энергии"); return; }
+  game.energy--;
+  game.blocking = true;
+  log("🛡️ Защитная стойка");
+  enemyTurn();
+};
+$("potionBtn").onclick = ()=>{
+  if(game.potions <= 0) return;
+  game.potions--;
+  let heal = DIFF[game.difficulty].potion;
+  const e = equipment();
+  if(e.hero && e.hero.potionBonus) heal = Math.floor(heal * (1 + e.hero.potionBonus/100));
+  game.hp = clamp(game.hp + heal, 0, game.maxHp);
+  log(`🧪 +${heal} HP`);
+  render();
+};
+$("runBtn").onclick = ()=>{
+  if(chance(40)){
+    log("🏃 Ты сбежал!");
+    game.inFight = false;
+    showCombatButtons(false);
+    $("mainBtn").textContent = "Идти дальше";
+    $("mainBtn").onclick = nextRoom;
+    $("roomType").textContent = "ПОБЕГ";
+    $("title").textContent = "Ты сбежал";
+    $("desc").textContent = "Можно идти дальше.";
+    render();
+  } else {
+    log("Не удалось сбежать!");
+    enemyTurn();
+  }
+};
+
+$("shopTab").onclick = ()=>openPanel("shop");
+$("invTab").onclick  = ()=>openPanel("inv");
+$("charTab").onclick = ()=>openPanel("heroes");
+$("extraTab").onclick= ()=>openPanel("artifacts");
+
+$("newRunBtn").onclick = newRun;
+
+document.querySelectorAll("[data-d]").forEach(btn=>{
+  btn.onclick = ()=>startGame(btn.dataset.d);
+});
+
+/* ========== ЗАПУСК ========== */
+load();
+recalculate();
+renderStories();
+log("Выбери историю и сложность");
+render();
+</script>
+</body>
+</html>
