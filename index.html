@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>100 Комнат</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#08080d;color:#eee;font-family:system-ui,sans-serif;overflow:hidden}
+body{display:flex;justify-content:center}
+#app{width:100%;max-width:480px;height:100%;display:flex;flex-direction:column;background:#0d0d16}
+header{padding:10px 12px;background:#10101a;border-bottom:1px solid #29293b}
+.brand{font-weight:900;font-size:16px}
+.sub{font-size:11px;color:#777;margin-top:1px}
+#stats{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}
+.stat{background:#171722;border:1px solid #2a2a3d;border-radius:8px;padding:6px 2px;text-align:center;font-size:11px}
+.stat b{display:block;font-size:14px;margin-top:1px}
+#scene{position:relative;height:210px;background:#0a0a12;border-bottom:1px solid #222}
+.wall{position:absolute;inset:0 0 30% 0;transition:background .3s}
+.floor{position:absolute;left:0;right:0;bottom:0;height:32%;transition:background .3s}
+#roomBadge{position:absolute;left:8px;top:8px;background:#000a;border:1px solid #444;padding:3px 7px;border-radius:6px;font-size:11px;z-index:2}
+#door{position:absolute;left:50%;top:28%;transform:translate(-50%,-50%);font-size:52px;opacity:.8}
+.sprite{position:absolute;bottom:48px;font-size:48px;z-index:2;filter:drop-shadow(0 4px 3px #000)}
+.hero{left:10%}.enemy{right:10%;display:none}
+#info{padding:10px 12px 6px;text-align:center}
+#roomType{font-size:11px;color:#888;letter-spacing:1px;font-weight:800}
+#title{font-size:20px;font-weight:900;color:#c5b6ff;margin:3px 0}
+#desc{font-size:13px;color:#aaa;min-height:36px;line-height:1.35}
+#enemyBox{display:none;margin:0 12px 8px;background:#15151f;border:1px solid #3d2a32;border-radius:10px;padding:8px}
+.hpbar{height:8px;background:#222;border-radius:4px;overflow:hidden;margin:5px 0}
+.hpfill{height:100%;background:#c45;transition:.2s}
+#energyBox{display:none;text-align:center;font-size:12px;color:#aaa;margin-bottom:6px}
+#energyBar{height:6px;background:#2a2a3a;border-radius:4px;margin:4px 12px 0;overflow:hidden}
+#energyFill{height:100%;background:#8b7cf7;transition:.2s}
+#actions{padding:8px 12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{border:none;border-radius:12px;padding:14px 8px;font-size:15px;font-weight:800;color:#fff;background:#1f1f32}
+button:active{transform:scale(.97)}
+.primary{background:#3b2d6d}.danger{background:#5c1f32}.good{background:#1e4a32}.wide{grid-column:1/-1}
+#log{height:64px;overflow-y:auto;margin:0 12px 8px;padding:8px;background:#0a0a10;border-radius:8px;font-size:11px;color:#888}
+#bottom{margin-top:auto;padding:8px 12px 16px;background:#10101a;border-top:1px solid #29293b}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.tabs button{padding:10px 4px;font-size:12px;background:#1a1a28}
+#panel{display:none;max-height:180px;overflow-y:auto;margin-top:8px;background:#0c0c14;border-radius:10px;padding:8px}
+.card{background:#161622;border:1px solid #333;border-radius:8px;padding:8px;margin:5px 0;font-size:12px}
+.card button{float:right;padding:5px 8px;font-size:11px;border-radius:6px}
+.common{border-color:#555}.uncommon{border-color:#4a9}.rare{border-color:#48c}.epic{border-color:#a5c}.legendary{border-color:#c96}
+#overlay{position:fixed;inset:0;background:#000d;display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal{background:#14141f;border:1px solid #333;border-radius:16px;padding:20px;width:100%;max-width:360px;text-align:center}
+.modal h2{margin-bottom:8px}.modal p{color:#aaa;font-size:14px;margin-bottom:14px}
+.story-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;max-height:40vh;overflow-y:auto}
+.story-card{background:#1a1a28;border:1px solid #333;border-radius:10px;padding:10px;text-align:left;font-size:12px}
+.story-card.selected{border-color:#a89cff;box-shadow:0 0 0 1px #a89cff}
+.story-card b{display:block;margin-bottom:3px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a28;border:1px solid #555;padding:10px 16px;border-radius:10px;opacity:0;transition:.25s;z-index:60;font-size:13px}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">🕯️ 100 КОМНАТ</div>
+    <div class="sub" id="subNick">Тёмное подземелье</div>
+    <div id="stats">
+      <div class="stat">Комн<b id="sRoom">0</b></div>
+      <div class="stat">❤️<b id="sHp">100</b></div>
+      <div class="stat">⚔️<b id="sAtk">10</b></div>
+      <div class="stat">🪙<b id="sCoins">0</b></div>
+    </div>
+  </header>
+
+  <div id="scene">
+    <div class="wall" id="wall"></div>
+    <div class="floor" id="floor"></div>
+    <div id="roomBadge">Вход</div>
+    <div id="door">🚪</div>
+    <div class="sprite hero" id="heroSpr">🧙</div>
+    <div class="sprite enemy" id="enemySpr">👹</div>
+  </div>
+
+  <div id="info">
+    <div id="roomType">ВХОД</div>
+    <div id="title">100 Комнат</div>
+    <div id="desc">Выбери историю и сложность</div>
+  </div>
+
+  <div id="enemyBox">
+    <div style="text-align:center;font-weight:800" id="enemyName">Враг</div>
+    <div class="hpbar"><div class="hpfill" id="enemyHp"></div></div>
+    <div style="text-align:center;font-size:11px;color:#aaa" id="enemyHpText">0/0</div>
+  </div>
+
+  <div id="energyBox">Энергия <b id="energyText">5/5</b> · 🛡️ Щит восстанавливает энергию
+    <div id="energyBar"><div id="energyFill" style="width:100%"></div></div>
+  </div>
+
+  <div id="actions">
+    <button class="primary wide" id="mainBtn">Начать</button>
+    <button class="danger" id="atkBtn" style="display:none">⚔️ Атака</button>
+    <button id="heavyBtn" style="display:none">💥 Тяжёлый</button>
+    <button id="blockBtn" style="display:none">🛡️ Щит</button>
+    <button class="good" id="potionBtn" style="display:none">🧪 Зелье</button>
+  </div>
+
+  <div id="log"></div>
+
+  <div id="bottom">
+    <div class="tabs">
+      <button id="tabShop">🛒</button>
+      <button id="tabInv">🎒</button>
+      <button id="tabHero">👤</button>
+      <button id="tabArt">🔮</button>
+      <button id="tabProfile">🧑</button>
+    </div>
+    <div id="panel"></div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="modal" id="startModal">
+    <h2>🕯️ 100 Комнат</h2>
+    <p>Выбери историю, потом сложность</p>
+    <div class="story-grid" id="storyGrid"></div>
+    <div id="selStory" style="color:#c5b6ff;font-size:13px;min-height:18px;margin-bottom:8px"></div>
+    <button class="good wide" data-d="easy" style="margin-top:6px">🟢 Лёгкий</button>
+    <button class="primary wide" data-d="normal">🟣 Нормальный</button>
+    <button class="danger wide" data-d="hard">🔴 Сложный</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const chance = p => Math.random()*100 < p;
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+
+const STORIES = {
+  corpse_forest: {
+    name: "Трупный лес", icon: "🌲",
+    desc: "Деревья шепчут голосами мёртвых. Здесь даже свет гниёт.",
+    wall: "#1a2a1a", floor: "#142014", door: "🌲",
+    enemies: ["Гнилой волк","Лесной упырь","Шепчущая лоза","Трупный друид"],
+    elite: "Хозяин корней", boss: "Сердце чащи"
+  },
+  blood_mines: {
+    name: "Кровавые шахты", icon: "⛏️",
+    desc: "Кирки до сих пор стучат. Только рук, которые ими машут, уже нет.",
+    wall: "#2a1515", floor: "#1f1010", door: "⛏️",
+    enemies: ["Кровавый шахтёр","Каменный клещ","Ржавый голем","Жила-паразит"],
+    elite: "Надзиратель", boss: "Алая скважина"
+  },
+  drowned_temple: {
+    name: "Утонувший храм", icon: "🌊",
+    desc: "Вода давным-давно ушла. Остались только эхо и те, кто не смог уйти.",
+    wall: "#10182a", floor: "#0c1220", door: "🌊",
+    enemies: ["Утопленный страж","Храмовый слизень","Безликий жрец","Глубинный шёпот"],
+    elite: "Хранитель купели", boss: "Тот, кто тонет"
+  },
+  ash_cult: {
+    name: "Пепельный культ", icon: "🔥",
+    desc: "Они сожгли всё, включая свои имена. Остался только огонь.",
+    wall: "#2a1a10", floor: "#1f140c", door: "🔥",
+    enemies: ["Пепельный фанатик","Угольный пёс","Горящий обедённый","Испепелённый"],
+    elite: "Проповедник пепла", boss: "Первый огонь"
+  },
+  frost_tomb: {
+    name: "Ледяная гробница", icon: "❄️",
+    desc: "Холод здесь не погода. Это приговор.",
+    wall: "#101a2a", floor: "#0c1520", door: "❄️",
+    enemies: ["Ледяной скелет","Морозный паук","Замёрзший рыцарь","Северный призрак"],
+    elite: "Холодный палач", boss: "Королева стужи"
+  },
+  goblin_swarm: {
+    name: "Гоблинский рой", icon: "👺",
+    desc: "Их слишком много. И всем им что-то от тебя нужно.",
+    wall: "#1a2a15", floor: "#142010", door: "👺",
+    enemies: ["Гоблин-резчик","Гоблин-плёватель","Гоблин-ворюга","Гоблин-шаман"],
+    elite: "Капитан роя", boss: "Король-в-лохмотьях"
+  }
+};
+
+const DIFF = {
+  easy:   {hp:0.7, atk:0.7, reward:1.3, potion:45, pots:3},
+  normal: {hp:1.0, atk:1.0, reward:1.0, potion:35, pots:2},
+  hard:   {hp:1.4, atk:1.35,reward:0.75,potion:28, pots:1}
+};
+
+const RARITY = {
+  common:   {name:"Обычный",   css:"common",   w:50},
+  uncommon: {name:"Необычный", css:"uncommon", w:25},
+  rare:     {name:"Редкий",    css:"rare",     w:14},
+  epic:     {name:"Эпический", css:"epic",     w:8},
+  legendary:{name:"Легендарный",css:"legendary",w:3}
+};
+
+const WEAPONS = [
+  {id:"w1",name:"Ржавый меч",icon:"⚔️",r:"common",atk:10,desc:"+10 ATK"},
+  {id:"w2",name:"Кинжал тени",icon:"🗡️",r:"uncommon",atk:8,crit:15,desc:"+8 ATK, +15% крит"},
+  {id:"w3",name:"Топор палача",icon:"🪓",r:"rare",atk:16,heavy:30,desc:"+16 ATK, тяжёлый +30%"},
+  {id:"w4",name:"Коса шёпота",icon:"☾",r:"epic",atk:14,killHeal:6,desc:"+14 ATK, +6 HP за убийство"},
+  {id:"w5",name:"Клинок пустоты",icon:"🩸",r:"legendary",atk:24,crit:12,desc:"+24 ATK, +12% крит"}
+];
+const HEROES = [
+  {id:"h1",name:"Рыцарь",icon:"🛡️",r:"common",hp:30,desc:"+30 HP"},
+  {id:"h2",name:"Разбойник",icon:"🥷",r:"uncommon",crit:18,desc:"+18% крит"},
+  {id:"h3",name:"Маг крови",icon:"🧙",r:"rare",potion:25,desc:"+25% от зелий"},
+  {id:"h4",name:"Охотник",icon:"🏹",r:"epic",double:12,desc:"12% двойной удар"},
+  {id:"h5",name:"Берсерк",icon:"💀",r:"legendary",low:50,desc:"+50% урона при HP<30%"}
+];
+const ARMORS = [
+  {id:"a1",name:"Тряпьё",icon:"👕",r:"common",def:2,desc:"+2 DEF"},
+  {id:"a2",name:"Кожанка",icon:"🧥",r:"uncommon",def:5,desc:"+5 DEF"},
+  {id:"a3",name:"Кольчуга",icon:"⛓️",r:"rare",def:9,hp:15,desc:"+9 DEF, +15 HP"},
+  {id:"a4",name:"Плащ тени",icon:"🌑",r:"epic",def:7,dodge:15,desc:"+7 DEF, 15% уклон"},
+  {id:"a5",name:"Латы бездны",icon:"🛡️",r:"legendary",def:14,hp:25,desc:"+14 DEF, +25 HP"}
+];
+const ARTS = [
+  {id:"r1",name:"Зуб вурдалака",icon:"🦷",r:"common",killHeal:4,desc:"+4 HP за убийство"},
+  {id:"r2",name:"Глаз бездны",icon:"👁️",r:"uncommon",critDmg:30,desc:"+30% крит урона"},
+  {id:"r3",name:"Треснувшее зеркало",icon:"🪞",r:"rare",reflect:15,desc:"15% шанс отразить 50%"},
+  {id:"r4",name:"Остановившиеся часы",icon:"⏱️",r:"epic",skip:10,desc:"10% шанс избежать ответа"},
+  {id:"r5",name:"Сердце берсерка",icon:"❤️‍🔥",r:"legendary",low:45,desc:"+45% урона при HP<30%"}
+];
+
+const ACHIEVEMENTS = [
+  {id:"first_steps", icon:"👣", name:"Первые шаги", desc:"Пройди первую комнату", cond:m=>m.stats.rooms>=1},
+  {id:"survivor",    icon:"🩸", name:"Живучий",     desc:"Дойди до комнаты 25 за один забег", cond:m=>m.stats.best>=25},
+  {id:"halfway",     icon:"⚔️", name:"На полпути",  desc:"Дойди до комнаты 50 за один забег", cond:m=>m.stats.best>=50},
+  {id:"legend",      icon:"🏆", name:"Легенда подземелья", desc:"Пройди все 100 комнат", cond:m=>m.stats.best>=100},
+  {id:"hunter",      icon:"🗡️", name:"Охотник",     desc:"Убей 25 врагов", cond:m=>m.stats.kills>=25},
+  {id:"slayer",      icon:"👑", name:"Убийца боссов", desc:"Победи 3 боссов", cond:m=>m.stats.bosses>=3},
+  {id:"collector",   icon:"🎁", name:"Коллекционер", desc:"Собери 10 предметов", cond:m=>Object.values(m.col).reduce((a,b)=>a+b.length,0)>=10},
+  {id:"rich",        icon:"🪙", name:"Богач",        desc:"Накопи 300 монет", cond:m=>m.coins>=300},
+  {id:"resilient",   icon:"💀", name:"Первый урок",  desc:"Погибни хотя бы раз — это тоже опыт", cond:m=>m.stats.deaths>=1}
+];
+
+let meta = {
+  coins: 0,
+  nickname: "",
+  stats: {rooms:0, kills:0, bosses:0, deaths:0, best:0},
+  col: {weapons:[], heroes:[], armors:[], arts:[]},
+  eq: {weapon:null, hero:null, armor:null, art:null}
+};
+
+let G = null; // current run
+let selectedStory = null;
+
+function save(){ localStorage.setItem("r100v5", JSON.stringify(meta)); }
+function load(){
+  try {
+    const d = JSON.parse(localStorage.getItem("r100v5"));
+    if(d){ meta = Object.assign(meta, d); }
+  } catch(e){}
+}
+
+function toast(t){
+  const el = $("toast");
+  el.textContent = t;
+  el.classList.add("show");
+  setTimeout(()=>el.classList.remove("show"), 1800);
+}
+function log(t){
+  const d = document.createElement("div");
+  d.textContent = t;
+  $("log").prepend(d);
+}
+
+function pickRarity(list){
+  let roll = Math.random()*100;
+  let r = "common";
+  if(roll < 3) r = "legendary";
+  else if(roll < 11) r = "epic";
+  else if(roll < 25) r = "rare";
+  else if(roll < 50) r = "uncommon";
+  const pool = list.filter(i => i.r === r);
+  return pool.length ? pool[rand(0,pool.length-1)] : list[0];
+}
+
+function owned(type){ return meta.col[type] || []; }
+function has(type, id){ return owned(type).includes(id); }
+function unlock(type, item){
+  if(!has(type, item.id)){
+    meta.col[type].push(item.id);
+    save();
+    return true;
+  }
+  return false;
+}
+function getItem(type, id){
+  const map = {weapons:WEAPONS, heroes:HEROES, armors:ARMORS, arts:ARTS};
+  return (map[type]||[]).find(i=>i.id===id);
+}
+
+function equip(){
+  return {
+    w: meta.eq.weapon ? getItem("weapons", meta.eq.weapon) : null,
+    h: meta.eq.hero ? getItem("heroes", meta.eq.hero) : null,
+    a: meta.eq.armor ? getItem("armors", meta.eq.armor) : null,
+    r: meta.eq.art ? getItem("arts", meta.eq.art) : null
+  };
+}
+
+function recalc(){
+  if(!G) return;
+  const e = equip();
+  let hp = 100, atk = 10, def = 0;
+  if(e.w) atk = e.w.atk || 10;
+  if(e.h && e.h.hp) hp += e.h.hp;
+  if(e.a){
+    def += e.a.def || 0;
+    if(e.a.hp) hp += e.a.hp;
+  }
+  G.maxHp = hp;
+  G.atk = atk;
+  G.def = def;
+  if(G.hp > G.maxHp) G.hp = G.maxHp;
+}
+
+function render(){
+  if(!G) return;
+  $("sRoom").textContent = G.room;
+  $("sHp").textContent = Math.ceil(G.hp);
+  $("sAtk").textContent = G.atk;
+  $("sCoins").textContent = meta.coins;
+
+  const e = equip();
+  $("heroSpr").textContent = e.h ? e.h.icon : "🧙";
+
+  if(G.fight && G.enemy){
+    $("enemyBox").style.display = "block";
+    $("enemySpr").style.display = "block";
+    $("energyBox").style.display = "block";
+    $("enemyName").textContent = G.enemy.name;
+    const pct = Math.max(0, G.enemy.hp / G.enemy.max * 100);
+    $("enemyHp").style.width = pct + "%";
+    $("enemyHpText").textContent = Math.ceil(G.enemy.hp) + "/" + G.enemy.max;
+    $("energyText").textContent = G.energy + "/5";
+    $("energyFill").style.width = (G.energy/5*100) + "%";
+    $("atkBtn").style.opacity = G.energy < 1 ? .4 : 1;
+    $("heavyBtn").style.opacity = G.energy < 2 ? .4 : 1;
+  } else {
+    $("enemyBox").style.display = "none";
+    $("enemySpr").style.display = "none";
+    $("energyBox").style.display = "none";
+  }
+}
+
+function setTheme(key){
+  const s = STORIES[key];
+  $("wall").style.background = s.wall;
+  $("floor").style.background = s.floor;
+  $("door").textContent = s.door;
+}
+
+function showStart(){
+  $("overlay").style.display = "flex";
+  $("startModal").style.display = "block";
+  const grid = $("storyGrid");
+  grid.innerHTML = "";
+  for(const [k,s] of Object.entries(STORIES)){
+    const c = document.createElement("div");
+    c.className = "story-card" + (selectedStory===k?" selected":"");
+    c.innerHTML = `<b>${s.icon} ${s.name}</b>${s.desc}`;
+    c.onclick = ()=>{
+      selectedStory = k;
+      $("selStory").textContent = "Выбрано: " + s.name;
+      showStart();
+    };
+    grid.appendChild(c);
+  }
+}
+
+function startRun(diff){
+  if(!selectedStory){ toast("Выбери историю"); return; }
+  const d = DIFF[diff];
+  G = {
+    room: 0, hp: 100, maxHp: 100, atk: 10, def: 0,
+    potions: d.pots,
+    energy: 5,
+    diff, story: selectedStory,
+    fight: false, enemy: null, block: false
+  };
+  recalc();
+  G.hp = G.maxHp;
+  setTheme(selectedStory);
+  $("overlay").style.display = "none";
+  log("История: " + STORIES[selectedStory].name);
+  log("Сложность: " + ({easy:"Лёгкий",normal:"Нормальный",hard:"Сложный"})[diff]);
+  nextRoom();
+}
+
+function nextRoom(){
+  G.room++;
+  G.fight = false;
+  G.block = false;
+  G.energy = 5;
+  meta.stats.rooms++;
+  if(G.room > meta.stats.best) meta.stats.best = G.room;
+  save();
+
+  $("roomBadge").textContent = "Комната " + G.room;
+  hideCombat();
+
+  let type;
+  if(G.room % 10 === 0) type = "boss";
+  else if(G.room % 5 === 0 && chance(45)) type = "elite";
+  else {
+    const r = Math.random();
+    if(r < 0.38) type = "fight";
+    else if(r < 0.55) type = "treasure";
+    else if(r < 0.68) type = "trap";
+    else if(r < 0.84) type = "event";
+    else type = "rest";
+  }
+
+  if(type==="fight"||type==="elite"||type==="boss") startFight(type);
+  else if(type==="treasure") roomTreasure();
+  else if(type==="trap") roomTrap();
+  else if(type==="event") roomEvent();
+  else roomRest();
+  render();
+}
+
+function startFight(type){
+  const s = STORIES[G.story];
+  const d = DIFF[G.diff];
+  let name, hp, atk;
+  if(type==="boss"){
+    name = s.boss; hp = 95+G.room*4.2; atk = 15+Math.floor(G.room/3.5);
+    meta.stats.bosses++;
+  } else if(type==="elite"){
+    name = s.elite; hp = 58+G.room*2.8; atk = 11+Math.floor(G.room/4.5);
+  } else {
+    name = s.enemies[rand(0,s.enemies.length-1)];
+    hp = 30+G.room*1.7; atk = 7+Math.floor(G.room/5.5);
+  }
+  G.enemy = {name, hp:Math.floor(hp*d.hp), max:Math.floor(hp*d.hp), atk:Math.floor(atk*d.atk), type};
+  G.fight = true;
+  G.energy = Math.min(5, G.energy); // keep current
+
+  $("roomType").textContent = type==="boss"?"БОСС":type==="elite"?"ЭЛИТА":"БОЙ";
+  $("title").textContent = name;
+  $("desc").textContent = type==="boss"?"Дверь захлопнулась.":"Враг преградил путь.";
+  $("door").textContent = type==="boss"?"👑":"⚔️";
+  showCombat();
+  log((type==="boss"?"👑 ":"⚔️ ") + name);
+  render();
+}
+
+function showCombat(){
+  $("mainBtn").style.display = "none";
+  $("atkBtn").style.display = "block";
+  $("heavyBtn").style.display = "block";
+  $("blockBtn").style.display = "block";
+  $("potionBtn").style.display = "block";
+}
+function hideCombat(){
+  $("mainBtn").style.display = "block";
+  $("atkBtn").style.display = "none";
+  $("heavyBtn").style.display = "none";
+  $("blockBtn").style.display = "none";
+  $("potionBtn").style.display = "none";
+}
+
+function playerTurn(heavy){
+  if(!G.fight) return;
+  if(heavy && G.energy < 2){ toast("Нужно 2 энергии"); return; }
+  if(!heavy && G.energy < 1){ toast("Нет энергии"); return; }
+
+  G.energy -= heavy ? 2 : 1;
+
+  // damage calc
+  let dmg = G.atk + rand(-2,3);
+  const e = equip();
+  if(heavy){
+    dmg = Math.floor(dmg * 1.65);
+    if(e.w && e.w.heavy) dmg = Math.floor(dmg * (1+e.w.heavy/100));
+  }
+  let crit = 5 + (e.w?.crit||0) + (e.h?.crit||0);
+  if(chance(crit)){
+    let mult = 1.85 + (e.r?.critDmg||0)/100;
+    dmg = Math.floor(dmg*mult);
+    log("💥 Крит!");
+  }
+  if((e.h?.low||e.r?.low) && G.hp/G.maxHp <= 0.3){
+    const bonus = (e.h?.low||0)+(e.r?.low||0);
+    dmg = Math.floor(dmg*(1+bonus/100));
+  }
+  if(e.h?.double && chance(e.h.double)){ dmg=Math.floor(dmg*1.7); log("🏹 Двойной!"); }
+
+  G.enemy.hp -= Math.max(1,dmg);
+  log(`Ты: ${Math.max(1,dmg)} урона`);
+
+  if(G.enemy.hp <= 0){ winFight(); return; }
+
+  // enemy turn
+  if(e.r?.skip && chance(e.r.skip)){ log("⏱️ Враг промахнулся"); render(); return; }
+  if(G.block){ log("🛡️ Блок!"); G.block=false; render(); return; }
+
+  let edmg = Math.max(1, G.enemy.atk + rand(-2,2) - G.def);
+  if(e.a?.dodge && chance(e.a.dodge)){ log("💨 Уклон!"); render(); return; }
+  if(e.r?.reflect && chance(e.r.reflect)){
+    const ref = Math.floor(edmg*0.5);
+    G.enemy.hp -= ref;
+    log(`🪞 Отражено ${ref}`);
+    if(G.enemy.hp<=0){ winFight(); return; }
+  }
+  G.hp -= edmg;
+  log(`Враг: ${edmg} урона`);
+  if(G.hp<=0){ death(); return; }
+  render();
+}
+
+function winFight(){
+  const d = DIFF[G.diff];
+  const isBoss = G.enemy.type==="boss";
+  const isElite = G.enemy.type==="elite";
+  let coins = (isBoss?rand(9,15):isElite?rand(4,8):rand(1,4)) + Math.floor(G.room/20);
+  meta.coins += coins;
+  meta.stats.kills++;
+
+  const e = equip();
+  let heal = (e.w?.killHeal||0)+(e.r?.killHeal||0);
+  if(heal){ G.hp=clamp(G.hp+heal,0,G.maxHp); log(`❤️ +${heal} HP`); }
+
+  log(`🏆 +${coins}🪙`);
+  if(chance(isBoss?100:isElite?60:20)) dropItem();
+
+  G.fight=false; G.enemy=null;
+  hideCombat();
+  $("mainBtn").textContent = G.room>=100 ? "Победа!" : "Дальше";
+  $("mainBtn").onclick = ()=> G.room>=100 ? winGame() : nextRoom();
+  $("roomType").textContent="ПОБЕДА";
+  $("title").textContent="Враг повержен";
+  $("desc").textContent="Можно идти.";
+  $("door").textContent="✅";
+  save(); render();
+}
+
+function dropItem(){
+  const pools = [
+    {list:WEAPONS,type:"weapons"},
+    {list:HEROES,type:"heroes"},
+    {list:ARMORS,type:"armors"},
+    {list:ARTS,type:"arts"}
+  ];
+  const p = pools[rand(0,3)];
+  const item = pickRarity(p.list);
+  if(unlock(p.type, item)){
+    log(`🎁 ${item.icon} ${item.name}`);
+    toast("Новый предмет!");
+  } else {
+    meta.coins += 15;
+    log("♻️ Дубликат +15🪙");
+  }
+  save();
+}
+
+function roomTreasure(){
+  $("roomType").textContent="СОКРОВИЩЕ";
+  $("title").textContent="Сундук";
+  $("desc").textContent="Пыльный, но тяжёлый.";
+  $("door").textContent="📦";
+  $("mainBtn").textContent="Открыть";
+  $("mainBtn").onclick = ()=>{
+    const r=Math.random();
+    if(r<0.4){ const c=rand(3,6); meta.coins+=c; log(`🪙 +${c}`); }
+    else if(r<0.7){ G.potions++; log("🧪 Зелье"); }
+    else dropItem();
+    finish();
+  };
+}
+function roomTrap(){
+  $("roomType").textContent="ЛОВУШКА";
+  $("title").textContent="Опасный пол";
+  $("desc").textContent="Что-то не так...";
+  $("door").textContent="⚠️";
+  $("mainBtn").textContent="Пройти";
+  $("mainBtn").className="danger wide";
+  $("mainBtn").onclick = ()=>{
+    if(chance(38)){ const c=rand(2,4); meta.coins+=c; log(`✅ Обошёл, +${c}🪙`); }
+    else {
+      const dmg=Math.max(1,rand(15,28)-G.def);
+      G.hp-=dmg; log(`💥 -${dmg} HP`);
+      if(G.hp<=0){ death(); return; }
+    }
+    finish();
+  };
+}
+function roomEvent(){
+  $("roomType").textContent="СОБЫТИЕ";
+  $("title").textContent="Незнакомец";
+  $("desc").textContent="Он предлагает выбор.";
+  $("door").textContent="❓";
+  $("mainBtn").textContent="Слушать";
+  $("mainBtn").onclick = ()=>{
+    const opts=[
+      ()=>{const h=rand(22,40);G.hp=clamp(G.hp+h,0,G.maxHp);log(`✨ +${h} HP`);},
+      ()=>{const c=rand(3,5);meta.coins+=c;log(`🪙 +${c}`);},
+      ()=>{if(chance(55))dropItem();else{G.potions++;log("🧪 Зелье");}}
+    ];
+    opts[rand(0,2)]();
+    finish();
+  };
+}
+function roomRest(){
+  $("roomType").textContent="ОТДЫХ";
+  $("title").textContent="Костёр";
+  $("desc").textContent="Хоть немного тепла.";
+  $("door").textContent="🔥";
+  $("mainBtn").textContent="Отдохнуть";
+  $("mainBtn").className="good wide";
+  $("mainBtn").onclick = ()=>{
+    const h=rand(25,42);
+    G.hp=clamp(G.hp+h,0,G.maxHp);
+    G.energy=5;
+    log(`🔥 +${h} HP, энергия полная`);
+    finish();
+  };
+}
+
+function finish(){
+  hideCombat();
+  $("mainBtn").className="primary wide";
+  $("mainBtn").textContent = G.room>=100?"Завершить":"Дальше";
+  $("mainBtn").onclick = ()=> G.room>=100?winGame():nextRoom();
+  $("roomType").textContent="ГОТОВО";
+  $("title").textContent="Путь открыт";
+  $("desc").textContent="";
+  $("door").textContent="➡️";
+  save(); render();
+}
+
+function death(){
+  G.hp=0;
+  meta.stats.deaths++;
+  save();
+  log("☠️ Ты умер");
+  $("overlay").style.display="flex";
+  $("startModal").innerHTML = `
+    <h2>☠️ Конец</h2>
+    <p>Комната ${G.room}. Монеты и коллекция сохранены.</p>
+    <button class="primary wide" onclick="location.reload()">Новый забег</button>
+  `;
+}
+
+function winGame(){
+  meta.coins += 60;
+  save();
+  $("overlay").style.display="flex";
+  $("startModal").innerHTML = `
+    <h2>🏆 Победа!</h2>
+    <p>100 комнат пройдено. +60 монет</p>
+    <button class="primary wide" onclick="location.reload()">Ещё раз</button>
+  `;
+}
+
+// UI buttons
+$("atkBtn").onclick = ()=>playerTurn(false);
+$("heavyBtn").onclick = ()=>playerTurn(true);
+$("blockBtn").onclick = ()=>{
+  G.block = true;
+  log("🛡️ Щит поднят");
+  // shield costs 0 energy, still give +1 regen feel by not subtracting
+  G.energy = Math.min(5, G.energy+1);
+  // enemy still acts
+  const e = equip();
+  if(e.r?.skip && chance(e.r.skip)){ log("⏱️ Промах"); render(); return; }
+  let edmg = Math.max(1, G.enemy.atk + rand(-2,2) - G.def);
+  if(e.a?.dodge && chance(e.a.dodge)){ log("💨 Уклон"); render(); return; }
+  G.hp -= Math.floor(edmg*0.35); // blocked damage reduced
+  log(`🛡️ Блок, получено ${Math.floor(edmg*0.35)}`);
+  if(G.hp<=0) death();
+  else render();
+};
+$("potionBtn").onclick = ()=>{
+  if(G.potions<=0){toast("Нет зелий");return;}
+  G.potions--;
+  let heal = DIFF[G.diff].potion;
+  const e = equip();
+  if(e.h?.potion) heal = Math.floor(heal*(1+e.h.potion/100));
+  G.hp = clamp(G.hp+heal,0,G.maxHp);
+  log(`🧪 +${heal} HP`);
+  render();
+};
+
+function openPanel(mode){
+  const p = $("panel");
+  p.style.display="block";
+  p.innerHTML="";
+  if(mode==="shop"){
+    p.innerHTML=`<div style="text-align:center;margin-bottom:6px"><b>🛒 Магазин</b><br><span style="font-size:11px;color:#888">${meta.coins} монет</span></div>`;
+    [
+      {t:"🗡️ Оружие",c:90,list:WEAPONS,type:"weapons"},
+      {t:"👤 Герой",c:130,list:HEROES,type:"heroes"},
+      {t:"🛡️ Броня",c:90,list:ARMORS,type:"armors"},
+      {t:"🔮 Артефакт",c:110,list:ARTS,type:"arts"}
+    ].forEach(x=>{
+      const card=document.createElement("div");
+      card.className="card";
+      card.innerHTML=`<b>${x.t}</b> <span style="color:#888;font-size:11px">случайный</span>`;
+      const b=document.createElement("button");
+      b.textContent=x.c+"🪙";
+      b.onclick=()=>{
+        if(meta.coins<x.c){toast("Мало монет");return;}
+        meta.coins-=x.c;
+        const item=pickRarity(x.list);
+        if(unlock(x.type,item)){toast(item.name);log("🎁 "+item.name);}
+        else{meta.coins+=18;toast("Дубликат +18");}
+        save(); openPanel("shop"); render();
+      };
+      card.appendChild(b);
+      p.appendChild(card);
+    });
+  }
+  if(mode==="inv"){
+    p.innerHTML="<b>Оружие и броня</b>";
+    renderList(p,"weapons",WEAPONS,"weapon");
+    renderList(p,"armors",ARMORS,"armor");
+  }
+  if(mode==="hero"){
+    p.innerHTML="<b>Герои</b>";
+    renderList(p,"heroes",HEROES,"hero");
+  }
+  if(mode==="art"){
+    p.innerHTML="<b>Артефакты</b>";
+    renderList(p,"arts",ARTS,"art");
+  }
+  if(mode==="profile"){
+    renderProfile(p);
+  }
+}
+function renderProfile(p){
+  p.innerHTML="";
+
+  // Nickname editor
+  const nickCard = document.createElement("div");
+  nickCard.className = "card";
+  nickCard.innerHTML = `<b>👤 Ник</b>`;
+  const nickRow = document.createElement("div");
+  nickRow.style.cssText = "display:flex;gap:6px;margin-top:6px";
+  const nickInput = document.createElement("input");
+  nickInput.type = "text";
+  nickInput.maxLength = 16;
+  nickInput.placeholder = "Введи ник";
+  nickInput.value = meta.nickname || "";
+  nickInput.style.cssText = "flex:1;background:#0c0c14;border:1px solid #333;border-radius:6px;color:#eee;padding:6px 8px;font-size:13px";
+  const nickBtn = document.createElement("button");
+  nickBtn.textContent = "Сохранить";
+  nickBtn.style.cssText = "padding:6px 10px;font-size:12px";
+  nickBtn.onclick = () => {
+    meta.nickname = nickInput.value.trim().slice(0,16);
+    save();
+    updateNickDisplay();
+    toast(meta.nickname ? "Ник сохранён" : "Ник очищен");
+  };
+  nickRow.appendChild(nickInput);
+  nickRow.appendChild(nickBtn);
+  nickCard.appendChild(nickRow);
+  p.appendChild(nickCard);
+
+  // Stats
+  const statsCard = document.createElement("div");
+  statsCard.className = "card";
+  const s = meta.stats;
+  statsCard.innerHTML = `<b>📊 Статистика</b><br>
+    <span style="color:#888">Комнат пройдено всего:</span> ${s.rooms}<br>
+    <span style="color:#888">Врагов убито:</span> ${s.kills}<br>
+    <span style="color:#888">Боссов повержено:</span> ${s.bosses}<br>
+    <span style="color:#888">Смертей:</span> ${s.deaths}<br>
+    <span style="color:#888">Лучший результат:</span> комната ${s.best}<br>
+    <span style="color:#888">Монет накоплено:</span> ${meta.coins}`;
+  p.appendChild(statsCard);
+
+  // Achievements
+  const achHead = document.createElement("div");
+  const unlockedCount = ACHIEVEMENTS.filter(a=>a.cond(meta)).length;
+  achHead.innerHTML = `<b>🏅 Достижения</b> <span style="color:#888;font-size:11px">${unlockedCount}/${ACHIEVEMENTS.length}</span>`;
+  achHead.style.margin = "8px 0 4px";
+  p.appendChild(achHead);
+
+  ACHIEVEMENTS.forEach(a=>{
+    const done = a.cond(meta);
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.opacity = done ? 1 : .5;
+    card.innerHTML = `<b>${done?a.icon:"🔒"} ${a.name}</b><br><span style="color:#888;font-size:11px">${a.desc}</span>`;
+    p.appendChild(card);
+  });
+}
+function updateNickDisplay(){
+  $("subNick").textContent = meta.nickname ? meta.nickname : "Тёмное подземелье";
+}
+function renderList(p, type, list, eqKey){
+  const ids = owned(type);
+  list.filter(i=>ids.includes(i.id)).forEach(item=>{
+    const card=document.createElement("div");
+    card.className="card "+RARITY[item.r].css;
+    const on = meta.eq[eqKey]===item.id;
+    card.innerHTML=`<b>${item.icon} ${item.name}</b> · ${RARITY[item.r].name}<br><span style="color:#888">${item.desc}</span>`;
+    const b=document.createElement("button");
+    b.textContent=on?"Надето":"Надеть";
+    b.disabled=on;
+    b.onclick=()=>{
+      meta.eq[eqKey]=item.id;
+      recalc(); save();
+      toast("Надето: "+item.name);
+      openPanel(type==="weapons"||type==="armors"?"inv":type==="heroes"?"hero":"art");
+      render();
+    };
+    card.appendChild(b);
+    p.appendChild(card);
+  });
+  if(!ids.length) p.innerHTML += `<div style="color:#666;font-size:12px;margin-top:6px">Пусто</div>`;
+}
+
+$("tabShop").onclick=()=>openPanel("shop");
+$("tabInv").onclick=()=>openPanel("inv");
+$("tabHero").onclick=()=>openPanel("hero");
+$("tabProfile").onclick=()=>openPanel("profile");
+$("tabArt").onclick=()=>openPanel("art");
+
+document.querySelectorAll("[data-d]").forEach(b=>{
+  b.onclick=()=>startRun(b.dataset.d);
+});
+
+load();
+updateNickDisplay();
+showStart();
+</script>
+</body>
+</html>
